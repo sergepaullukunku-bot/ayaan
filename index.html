@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjAgMTIwIiB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImFnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjNDQzM2IwIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMjMxYTY2Ii8+PC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZGciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZmZmZmYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlY2U5ZmIiLz48L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB4PSI0IiB5PSI0IiB3aWR0aD0iMTEyIiBoZWlnaHQ9IjExMiIgcng9IjI4IiBmaWxsPSJ1cmwoI2FnKSIvPgogIDxwYXRoIGQ9Ik02MCAxNiBDNjAgMTYgMjggNTQgMjggNzQgQTMyIDMyIDAgMCAwIDkyIDc0IEM5MiA1NCA2MCAxNiA2MCAxNiBaIiBmaWxsPSJ1cmwoI2RnKSIvPgogIDxlbGxpcHNlIGN4PSI0NSIgY3k9IjUwIiByeD0iNCIgcnk9IjkiIHRyYW5zZm9ybT0icm90YXRlKDI4IDQ1IDUwKSIgZmlsbD0iI2ZmZmZmZiIgb3BhY2l0eT0iLjkiLz4KICA8cGF0aCBkPSJNNDAgNjIgQzQ4IDYwIDUwIDgwIDYwIDgyIEM2NiA4My41IDcyIDgzIDgwIDgzIiBmaWxsPSJub25lIiBzdHJva2U9IiMzNDI3ODciIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPGNpcmNsZSBjeD0iODAuNSIgY3k9IjgzIiByPSI2LjUiIGZpbGw9IiNmMmM0MDAiIHN0cm9rZT0iIzM0Mjc4NyIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KPC9zdmc+">
+<title>Ayaan Suivi CV</title>
+<style>
+/* Layout : barre d'outils + tuiles de synthèse + liste de travail patient par patient, puis tableaux mensuels/trimestriels */
+:root{
+  --bg:#f6f5fa; --panel:#ffffff; --ink:#1f1b33; --muted:#6b6880; --line:#dcd9e8;
+  --violet:#342787; --violet-soft:#ebe8f7; --jaune:#f2c400; --jaune-soft:#fff6d1; --bleu:#0b6fa6;
+  --ok:#1e8449; --ok-soft:#d8f0df; --warn:#9a6b00; --warn-soft:#fff1c2; --bad:#b42318; --bad-soft:#f9dcd8;
+  --f-body:"Fira Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --f-num:"Fira Code",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#14121f; --panel:#1d1a2c; --ink:#ecebf5; --muted:#a29fb8; --line:#34304a;
+  --violet:#a99cf2; --violet-soft:#2a2545; --jaune:#f2c400; --jaune-soft:#3a3214; --bleu:#5fb4e6;
+  --ok:#6fd08f; --ok-soft:#173523; --warn:#f2c94c; --warn-soft:#3a3014; --bad:#ff8a7a; --bad-soft:#41201c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14121f; --panel:#1d1a2c; --ink:#ecebf5; --muted:#a29fb8; --line:#34304a;
+  --violet:#a99cf2; --violet-soft:#2a2545; --jaune:#f2c400; --jaune-soft:#3a3214; --bleu:#5fb4e6;
+  --ok:#6fd08f; --ok-soft:#173523; --warn:#f2c94c; --warn-soft:#3a3014; --bad:#ff8a7a; --bad-soft:#41201c; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px;display:grid;gap:18px}
+header.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between;border-bottom:3px solid var(--jaune);padding-bottom:12px}
+.brand small{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--bleu);font-weight:600}
+.brand h1{margin:2px 0 0;font-size:26px;color:var(--violet);text-wrap:balance}
+.brand p{margin:4px 0 0;color:var(--muted);font-size:13px;max-width:62ch}
+.btn{font:inherit;font-weight:600;font-size:14px;border-radius:8px;border:1px solid var(--violet);background:var(--violet);color:#fff;padding:8px 14px;cursor:pointer}
+:root[data-theme="dark"] .btn{color:#14121f}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn{color:#14121f}}
+.btn.ghost{background:transparent;color:var(--violet)}
+.btn:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--jaune);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.controls{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+label.f{display:grid;gap:4px;font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.03em}
+select,input[type=date],input[type=text],input[type=search],textarea{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-width:0;width:100%}
+.alert{border-radius:10px;padding:12px 14px;font-size:14px}
+.alert.bad{background:var(--bad-soft);color:var(--bad);font-weight:600}
+.alert.info{background:var(--jaune-soft);color:var(--ink)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:2px}
+.tile b{font-family:var(--f-num);font-size:30px;font-weight:500;font-variant-numeric:tabular-nums}
+.tile span{font-size:13px;color:var(--muted)}
+.tile.v b{color:var(--violet)} .tile.o b{color:var(--ok)} .tile.r b{color:var(--bad)} .tile.j b{color:var(--warn)}
+.period{background:var(--violet);color:#fff;border-radius:12px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:8px 28px;align-items:baseline}
+:root[data-theme="dark"] .period{color:#14121f}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .period{color:#14121f}}
+.period h2{margin:0;font-size:16px;flex-basis:100%}
+.period .n{font-family:var(--f-num);font-size:26px;font-variant-numeric:tabular-nums}
+.period .l{font-size:12px;opacity:.85;display:block}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px;min-width:0}
+.panel h2{margin:0;font-size:17px;color:var(--violet)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:4px 11px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--violet-soft);border-color:var(--violet);color:var(--violet);font-weight:600}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{background:var(--violet-soft);color:var(--violet);text-align:left;font-size:12px;letter-spacing:.03em;padding:8px;white-space:nowrap;position:sticky;top:0}
+td{border-top:1px solid var(--line);padding:6px 8px;vertical-align:middle}
+td.num,th.num{text-align:right;font-family:var(--f-num);font-variant-numeric:tabular-nums}
+td input{padding:5px 7px}
+.track{display:inline-block;margin-top:3px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--bad)}
+tr.late td:first-child{box-shadow:inset 3px 0 0 var(--bad)}
+.pill{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap}
+.p-ok{background:var(--ok-soft);color:var(--ok)} .p-bad{background:var(--bad-soft);color:var(--bad)} .p-warn{background:var(--warn-soft);color:var(--warn)} .p-mut{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.pct-ok{color:var(--ok);font-weight:700} .pct-warn{color:var(--warn);font-weight:700} .pct-bad{color:var(--bad);font-weight:700}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px}
+.muted{color:var(--muted);font-size:13px}
+.ex{background:var(--jaune);color:#1f1b33;font-size:12px;font-weight:700;border-radius:6px;padding:2px 8px;letter-spacing:.05em;text-transform:uppercase}
+details summary{cursor:pointer;font-weight:600;color:var(--violet)}
+textarea{min-height:90px;font-family:var(--f-num);font-size:12px}
+.pager{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+.logo{width:56px;height:56px;flex:none}
+.brandrow{display:flex;gap:14px;align-items:center}
+#splash{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:linear-gradient(135deg,#3d2fa0,#1d1554);color:#fff;transition:opacity .45s ease}
+#splash.out{opacity:0;pointer-events:none}
+#splash .sp{display:grid;justify-items:center;gap:14px;text-align:center}
+#splash .logo{width:132px;height:132px;animation:pop .7s cubic-bezier(.2,.9,.3,1.3) both;filter:drop-shadow(0 12px 28px rgba(0,0,0,.35))}
+#splash .nm{font-size:40px;font-weight:800;letter-spacing:-.5px;animation:up .6s .25s both}
+#splash .sb{font-size:14px;font-weight:700;letter-spacing:.3em;color:#f2c400;animation:up .6s .4s both}
+#splash .org{font-size:12px;opacity:.75;animation:up .6s .55s both}
+@keyframes pop{from{transform:scale(.4) rotate(-8deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes up{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion: reduce){#splash .logo,#splash .nm,#splash .sb,#splash .org{animation:none}}
+</style>
+<style>:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark}}</style>
+<script>window.AYAAN_OFFLINE=true</script>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#342787">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ayaan">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
+</head>
+<body>
+
+<div id="splash" role="presentation"><div class="sp"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" class="logo" aria-hidden="true">
+  <defs>
+    <linearGradient id="ag" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4433b0"/><stop offset="1" stop-color="#231a66"/></linearGradient>
+    <linearGradient id="dg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#ece9fb"/></linearGradient>
+  </defs>
+  <rect x="4" y="4" width="112" height="112" rx="28" fill="url(#ag)"/>
+  <path d="M60 16 C60 16 28 54 28 74 A32 32 0 0 0 92 74 C92 54 60 16 60 16 Z" fill="url(#dg)"/>
+  <ellipse cx="45" cy="50" rx="4" ry="9" transform="rotate(28 45 50)" fill="#ffffff" opacity=".9"/>
+  <path d="M40 62 C48 60 50 80 60 82 C66 83.5 72 83 80 83" fill="none" stroke="#342787" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="80.5" cy="83" r="6.5" fill="#f2c400" stroke="#342787" stroke-width="2.5"/>
+</svg><div class="nm">Ayaan</div><div class="sb">SUIVI CV</div><div class="org">ASF · Projet AFGHS-ASF</div></div></div>
+<div class="wrap">
+  <header class="top">
+    <div class="brandrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" class="logo" aria-hidden="true">
+  <defs>
+    <linearGradient id="ag" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4433b0"/><stop offset="1" stop-color="#231a66"/></linearGradient>
+    <linearGradient id="dg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#ece9fb"/></linearGradient>
+  </defs>
+  <rect x="4" y="4" width="112" height="112" rx="28" fill="url(#ag)"/>
+  <path d="M60 16 C60 16 28 54 28 74 A32 32 0 0 0 92 74 C92 54 60 16 60 16 Z" fill="url(#dg)"/>
+  <ellipse cx="45" cy="50" rx="4" ry="9" transform="rotate(28 45 50)" fill="#ffffff" opacity=".9"/>
+  <path d="M40 62 C48 60 50 80 60 82 C66 83.5 72 83 80 83" fill="none" stroke="#342787" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="80.5" cy="83" r="6.5" fill="#f2c400" stroke="#342787" stroke-width="2.5"/>
+</svg><div class="brand">
+      <small>ASF · Projet AFGHS-ASF · VIH</small>
+      <h1>Ayaan Suivi CV</h1>
+      <p>Patients actifs (définition MER), date probable du prochain prélèvement et attendus par mois et par trimestre, à partir de l'export Tier.Net. Les données restent sur cet appareil.<span id="offTag"></span></p>
+    </div></div>
+    <div class="row">
+      <input type="file" id="file" accept=".xlsx,.csv" hidden>
+      <button class="btn ghost" id="btnRep" type="button">Envoyer au centralisateur</button>
+      <button class="btn" id="btnImport">Importer l'export Tier.Net</button>
+    </div>
+  </header>
+
+  <div id="msg"></div>
+
+  <section class="controls" aria-label="Filtres">
+    <label class="f" for="selEss">ESS<select id="selEss"></select></label>
+    <label class="f" for="selPer">Période<select id="selPer"></select></label>
+    <label class="f" for="dRef">Date de référence<input type="date" id="dRef"></label>
+    <label class="f" for="dFy">Début de l'année fiscale<input type="date" id="dFy"></label>
+    <label class="f" for="q">Rechercher un N° dossier<input type="search" id="q" placeholder="ex. MU2903…"></label>
+  </section>
+
+  <div id="track" aria-live="polite"></div>
+  <section class="tiles" id="tiles" aria-label="Synthèse"></section>
+  <section class="period" id="period" aria-live="polite"></section>
+
+  <section class="panel">
+    <div class="row" style="justify-content:space-between">
+      <h2 id="listTitle">Patients</h2>
+      <div class="row">
+        <button class="btn ghost" id="btnCopy">Copier la liste pour Excel</button>
+        <button class="btn ghost" id="btnDl" hidden>Télécharger la liste (Excel)</button>
+      </div>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Filtrer par statut"></div>
+    <div class="tw"><table><thead><tr><th>N° dossier</th><th>ESS</th><th>Début ARV</th><th>Dernier prélèvement CV</th><th>Date probable de prélèvement</th><th>Statut</th><th>Date effective du prélèvement</th><th>Prochain RDV CV</th><th>Commentaire</th><th class="num">Retard (j)</th></tr></thead><tbody id="tb"></tbody></table></div>
+    <div class="pager"><span class="muted" id="pinfo"></span><button class="btn ghost" id="prev">Précédent</button><button class="btn ghost" id="next">Suivant</button></div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel"><h2>Par mois</h2><div class="tw"><table><thead><tr><th>Mois</th><th class="num">Attendus</th><th class="num">Réalisés</th><th class="num">%</th></tr></thead><tbody id="tbM"></tbody></table></div></div>
+    <div class="panel"><h2>Par trimestre</h2><div class="tw"><table><thead><tr><th>Trimestre</th><th class="num">Attendus</th><th class="num">Réalisés</th><th class="num">%</th></tr></thead><tbody id="tbQ"></tbody></table></div>
+      <h2 style="margin-top:8px">Par ESS (période choisie)</h2><div class="tw"><table><thead><tr><th>ESS</th><th class="num">Actifs</th><th class="num">Attendus</th><th class="num">Réalisés</th><th class="num">%</th></tr></thead><tbody id="tbE"></tbody></table></div></div>
+  </section>
+
+  <section class="panel" id="manPanel">
+    <h2>Saisie manuelle d'un patient</h2>
+    <p class="muted">Pour un site sans export Tier.Net, ou quand l'export n'est pas à jour. Si le N° dossier existe déjà dans l'export pour cette ESS, les informations saisies ici remplacent celles de l'export. Champs obligatoires : ESS, N° dossier, date de début TARV.</p>
+    <form id="manForm" class="controls" style="border:0;padding:0" autocomplete="off">
+      <label class="f" for="m_ess">ESS *<input type="text" id="m_ess" list="essList" required></label>
+      <datalist id="essList"></datalist>
+      <label class="f" for="m_dos">N° dossier *<input type="text" id="m_dos" required></label>
+      <label class="f" for="m_deb">Date du début TARV *<input type="date" id="m_deb" required></label>
+      <label class="f" for="m_rdv">Date du prochain RDV<input type="date" id="m_rdv"></label>
+      <label class="f" for="m_cvd">Date de la dernière CV<input type="date" id="m_cvd"></label>
+      <label class="f" for="m_cvr">Résultat dernière CV (copies/ml)<input type="text" id="m_cvr" inputmode="numeric" placeholder="ex. 40"></label>
+      <label class="f" for="m_sta">Statut<select id="m_sta"><option value="">En suivi</option><option>Décédé</option><option>Transféré/Déplacé</option><option>Perdu de vue</option></select></label>
+      <div class="row" style="align-self:end"><button class="btn" type="submit" id="m_save">Enregistrer le patient</button><button class="btn ghost" type="button" id="m_reset">Vider</button></div>
+    </form>
+    <div id="m_msg" class="muted"></div>
+    <details id="manDet"><summary id="manSum">Patients saisis à la main (0)</summary>
+      <div class="tw" style="margin-top:8px"><table><thead><tr><th>ESS</th><th>N° dossier</th><th>Début TARV</th><th>Prochain RDV</th><th>Dernière CV</th><th class="num">Résultat</th><th>Statut</th><th>Source</th><th></th></tr></thead><tbody id="tbMan"></tbody></table></div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <h2>Règles et sauvegarde</h2>
+    <p class="muted"><b>Actif (MER)</b> : date de référence ≤ date du prochain RDV + 28 jours ; décédés, transférés et patients sans date de début TARV exclus. <b>Date probable</b> : sans CV = début TARV + 6 mois ; CV faite dans les 12 premiers mois = début TARV + 12 mois ; ensuite dernière CV + 12 mois ; CV ≥ 1 000 copies = dernière CV + 3 mois. Une date antérieure au début de l'année fiscale devient ce premier jour : le patient reste attendu chaque mois jusqu'au prélèvement. <b>Réalisé</b> : nouvelle CV dans Tier.Net pendant la période (la date effective se remplit alors seule, marquée « auto · Tier.Net ») ou date saisie par l'IT si l'export n'est pas à jour. <b>Prochain RDV CV</b> : dès qu'un prélèvement est fait (Tier.Net ou saisi), la date du prélèvement suivant est calculée selon les mêmes règles (ex. patient sous ARV depuis 2017 prélevé le 06/10/2026 : prochain RDV CV le 06/10/2027) ; elle est à communiquer au patient. <b>En retard</b> : date probable dépassée sans prélèvement ; le patient est signalé automatiquement pour le tracking actif. Vert ≥ 95 %, jaune 85 à 94 %, rouge &lt; 85 %.</p>
+    <p class="muted">Les dates saisies sont gardées par N° dossier : elles ne se décalent pas quand vous importez un nouvel export. Elles restent dans ce navigateur, sur cet appareil. Faites une sauvegarde régulière.</p>
+    <details><summary>Sauvegarder ou restaurer les dates saisies</summary>
+      <div class="row" style="margin-top:8px"><button class="btn ghost" id="btnBack">Copier la sauvegarde</button><button class="btn ghost" id="btnRest">Restaurer depuis le texte collé</button><button class="btn ghost" id="btnBkDl" hidden>Enregistrer la sauvegarde (fichier)</button><input type="file" id="bkFile" accept=".json,.txt" hidden><button class="btn ghost" id="btnBkUp" hidden>Restaurer depuis un fichier</button><button class="btn ghost" id="btnClear">Effacer les données de cet appareil</button></div>
+      <label class="f" for="bk" style="margin-top:8px">Texte de sauvegarde (collez-le dans un courriel ou un fichier texte pour le garder)<textarea id="bk"></textarea></label>
+      <div id="bkmsg" class="muted"></div>
+    </details>
+  </section>
+</div>
+
+<script>(function(){var s=document.getElementById('splash');if(!s)return;var t=matchMedia('(prefers-reduced-motion: reduce)').matches?500:1500;function h(){s.classList.add('out');setTimeout(function(){s.remove()},500)}setTimeout(h,t);s.addEventListener('click',h)})();</script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const K_DATA='cvasf.data.v1',K_SAIS='cvasf.saisies.v1',K_MAN='cvasf.manuels.v1';
+const store={get(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const DAY=864e5;
+const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const NEED={dos:'numero de dossier',deb:'date du debut tarv',rdv:'date prochain rendez-vous dernier tarv',cvd:'date charge virale dernier tarv',cvr:'charge virale dernier tarv',sta:'resultat',ess:'centre de sante'};
+const LABEL={dos:'Numéro de dossier',deb:'Date du début TARV',rdv:'Date prochain rendez-vous dernier TARV',cvd:'Date charge virale dernier TARV',cvr:'Charge virale dernier TARV',sta:'Résultat',ess:'Centre de Santé'};
+const MOIS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const ymd=d=>d? new Date(d.getFullYear(),d.getMonth(),d.getDate()):null;
+const iso=d=>d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`:'';
+const fr=d=>d?`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`:'';
+const fromIso=s=>{if(!s)return null;const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)};
+const addM=(d,n)=>{const r=new Date(d.getFullYear(),d.getMonth()+n,1);const last=new Date(r.getFullYear(),r.getMonth()+1,0).getDate();r.setDate(Math.min(d.getDate(),last));return r};
+function toDate(v){
+  if(v==null||v==='')return null;
+  if(v instanceof Date&&!isNaN(v))return ymd(v);
+  if(typeof v==='number'&&v>20000&&v<80000){return ymd(new Date(Math.round((v-25569)*DAY)+new Date().getTimezoneOffset()*6e4))}
+  const s=String(v).trim();let m=s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);
+  m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return new Date(+m[1],+m[2]-1,+m[3]);return null;
+}
+function toNum(v){if(v==null||v==='')return null;if(typeof v==='number')return v;const n=parseFloat(String(v).replace(/[<>\s]/g,'').replace(',','.'));return isNaN(n)?null:n}
+
+const OFFLINE=!!window.AYAAN_OFFLINE;
+async function readXlsx(buf){
+  const u8=new Uint8Array(buf),dv=new DataView(buf);
+  if(u8[0]!==0x50||u8[1]!==0x4b)throw new Error("Ce fichier n'est pas un classeur .xlsx (les anciens fichiers .xls ne sont pas lus : enregistrez-le en .xlsx).");
+  let eocd=-1;for(let i=u8.length-22;i>=Math.max(0,u8.length-70000);i--){if(dv.getUint32(i,true)===0x06054b50){eocd=i;break}}
+  if(eocd<0)throw new Error('Fichier .xlsx endommagé.');
+  const n=dv.getUint16(eocd+10,true);let p=dv.getUint32(eocd+16,true);const files={};const td=new TextDecoder();
+  for(let k=0;k<n;k++){const meth=dv.getUint16(p+10,true),csz=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),off=dv.getUint32(p+42,true);
+    const name=td.decode(u8.subarray(p+46,p+46+nl));files[name]={meth,csz,off};p+=46+nl+el+cl}
+  async function get(name){const f=files[name];if(!f)return null;const lnl=dv.getUint16(f.off+26,true),lel=dv.getUint16(f.off+28,true);const data=u8.subarray(f.off+30+lnl+lel,f.off+30+lnl+lel+f.csz);
+    if(f.meth===0)return td.decode(data);
+    const ds=new DecompressionStream('deflate-raw');const out=new Response(new Blob([data]).stream().pipeThrough(ds));return td.decode(await out.arrayBuffer())}
+  const ent=s=>s.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(m,d)=>String.fromCharCode(+d)).replace(/&amp;/g,'&');
+  const ss=[];const sx=await get('xl/sharedStrings.xml');
+  if(sx){const re=/<si>([\s\S]*?)<\/si>/g;let m;while((m=re.exec(sx))){let t='';const rt=/<t[^>]*>([\s\S]*?)<\/t>/g;let q;while((q=rt.exec(m[1])))t+=q[1];ss.push(ent(t))}}
+  let sheet='xl/worksheets/sheet1.xml';
+  const wb=await get('xl/workbook.xml'),rels=await get('xl/_rels/workbook.xml.rels');
+  if(wb&&rels){const s1=wb.match(/<sheet [^>]*r:id="([^"]+)"/);if(s1){const r=new RegExp('<Relationship [^>]*Id="'+s1[1]+'"[^>]*Target="([^"]+)"').exec(rels)||new RegExp('<Relationship [^>]*Target="([^"]+)"[^>]*Id="'+s1[1]+'"').exec(rels);if(r){let t=r[1].replace(/^\/?xl\//,'').replace(/^\//,'');sheet='xl/'+t}}}
+  const sx2=await get(sheet);if(!sx2)throw new Error('Feuille introuvable dans le classeur.');
+  const col=ref=>{let c=0;for(const ch of ref){const v=ch.charCodeAt(0);if(v<65||v>90)break;c=c*26+(v-64)}return c-1};
+  const aoa=[];const rowRe=/<row\b([^>]*)>([\s\S]*?)<\/row>/g;let rm,ri=0;
+  while((rm=rowRe.exec(sx2))){const rn=/\br="(\d+)"/.exec(rm[1]);const idx=rn?(+rn[1]-1):ri;ri=idx+1;const row=[];
+    const cRe=/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;let cm;
+    while((cm=cRe.exec(rm[2]))){const at=cm[1],body=cm[2]||'';const r=/\br="([A-Z]+)\d+"/.exec(at);const t=(/\bt="(\w+)"/.exec(at)||[])[1];
+      let v=null;if(t==='inlineStr'){const q=/<t[^>]*>([\s\S]*?)<\/t>/.exec(body);v=q?ent(q[1]):''}else{const q=/<v>([\s\S]*?)<\/v>/.exec(body);if(q){v=q[1];if(t==='s')v=ss[+v];else if(t==='str'||t==='e')v=ent(v);else if(t==='b')v=v==='1';else v=+v}}
+      row[r?col(r[1]):row.length]=v}
+    aoa[idx]=row}
+  for(let i=0;i<aoa.length;i++)if(!aoa[i])aoa[i]=[];
+  return aoa;
+}
+
+
+function readCsv(text){const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/);const sep=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?';':',';return lines.map(l=>{const out=[];let cur='',q=false;for(let i=0;i<l.length;i++){const ch=l[i];if(q){if(ch=='"'&&l[i+1]=='"'){cur+='"';i++}else if(ch=='"')q=false;else cur+=ch}else if(ch=='"')q=true;else if(ch===sep){out.push(cur);cur=''}else cur+=ch}out.push(cur);return out})}
+let MAN=store.get(K_MAN)||{};
+let DATA=null, SAIS=store.get(K_SAIS)||{}, page=0, statusFilter='Tous';
+const PAGE=100;
+
+function today(){return ymd(new Date())}
+function defaultFy(ref){return new Date(ref.getMonth()>=9?ref.getFullYear():ref.getFullYear()-1,9,1)}
+
+function sample(){
+  // Données d'exemple fictives
+  const out=[],ess=['ESS exemple A','ESS exemple B'];let seed=7;const rnd=()=>(seed=(seed*9301+49297)%233280)/233280;
+  const ref=today();
+  for(let i=0;i<80;i++){
+    const deb=new Date(ref.getTime()-(60+rnd()*2400)*DAY);
+    const hasCv=rnd()>.15;const cvd=hasCv?new Date(ref.getTime()-(20+rnd()*600)*DAY):null;
+    const rdv=new Date(ref.getTime()+(-90+rnd()*200)*DAY);
+    out.push({dos:'EX'+String(1000+i),ess:ess[i%2],deb:iso(ymd(deb)),rdv:iso(ymd(rdv)),cvd:hasCv&&cvd>deb?iso(ymd(cvd)):'',cvr:hasCv?(rnd()>.9?4200:Math.round(rnd()*60)):null,sta:rnd()>.95?'Décédé':''});
+  }
+  return {rows:out,file:'Données d\'exemple (fictives)',date:iso(today()),example:true};
+}
+
+function parseFile(file){
+  const rd=new FileReader();
+  rd.onload=async e=>{
+    try{
+      const aoa=/\.csv$/i.test(file.name)?readCsv(new TextDecoder().decode(e.target.result)):await readXlsx(e.target.result);
+      let h=-1;for(let i=0;i<Math.min(aoa.length,15);i++){if((aoa[i]||[]).some(c=>norm(c)===NEED.dos)){h=i;break}}
+      if(h<0){showMsg('bad',"Colonne « Numéro de dossier » introuvable. Vérifiez qu'il s'agit bien d'un export Tier.Net (ligne d'en-têtes en haut).");return}
+      const hdr=aoa[h].map(norm);const idx={},miss=[];
+      for(const k in NEED){const j=hdr.indexOf(NEED[k]);if(j<0)miss.push(LABEL[k]);idx[k]=j}
+      if(miss.length){showMsg('bad','Colonne(s) introuvable(s) dans l\'export : '+miss.join(', ')+'. Le nom doit être exactement celui de Tier.Net.');return}
+      const rows=[];
+      for(let i=h+1;i<aoa.length;i++){const r=aoa[i]||[];const dos=r[idx.dos];if(dos==null||String(dos).trim()==='')continue;
+        rows.push({dos:String(dos).trim(),ess:String(r[idx.ess]||'(sans ESS)').trim(),deb:iso(toDate(r[idx.deb])),rdv:iso(toDate(r[idx.rdv])),cvd:iso(toDate(r[idx.cvd])),cvr:toNum(r[idx.cvr]),sta:String(r[idx.sta]||'').trim()})}
+      DATA={rows,file:file.name,date:iso(today()),example:false};
+      const ok=store.set(K_DATA,DATA);
+      showMsg('info',`Export importé : ${rows.length} lignes, ${new Set(rows.map(r=>r.ess)).size} ESS.`+(ok?'':' Attention : cet appareil n\'a pas pu garder l\'export en mémoire, il faudra le réimporter à la prochaine ouverture.'));
+      fillEss();page=0;render();
+    }catch(err){showMsg('bad','Lecture du fichier impossible : '+err.message)}
+  };
+  rd.readAsArrayBuffer(file);
+}
+function showMsg(kind,t){$('msg').innerHTML=t?`<div class="alert ${kind}">${t}</div>`:''}
+
+function periods(fy){
+  const ps=[];for(let i=0;i<12;i++){const s=new Date(fy.getFullYear(),fy.getMonth()+i,1),e=new Date(s.getFullYear(),s.getMonth()+1,0);ps.push({id:'m'+i,lab:MOIS[s.getMonth()].replace(/^./,c=>c.toUpperCase())+' '+s.getFullYear(),s,e,type:'m'})}
+  const fyY=fy.getFullYear()+1;
+  for(let q=0;q<4;q++){const s=new Date(fy.getFullYear(),fy.getMonth()+3*q,1),e=new Date(s.getFullYear(),s.getMonth()+3,0);ps.push({id:'q'+q,lab:`T${q+1} FY${String(fyY).slice(2)} (${MOIS[s.getMonth()].slice(0,4)}. – ${MOIS[e.getMonth()].slice(0,4)}. ${e.getFullYear()})`,s,e,type:'q'})}
+  return ps;
+}
+
+function baseRows(){return DATA&&!(DATA.example&&Object.keys(MAN).length)?DATA.rows:[]}
+function getRows(){
+  const base=baseRows();const map=new Map();base.forEach(r=>map.set(r.ess+'|'+r.dos,{...r,src:DATA.example?'Exemple':'Export'}));
+  for(const k in MAN){const m=MAN[k];const b=map.get(k);
+    if(b){const o={...b,src:'Export corrigé'};['deb','rdv','cvd'].forEach(f=>{if(m[f])o[f]=m[f]});o.sta=m.sta||'';if(m.cvr!=null&&m.cvr!=='')o.cvr=m.cvr;map.set(k,o)}
+    else map.set(k,{dos:m.dos,ess:m.ess,deb:m.deb||'',rdv:m.rdv||'',cvd:m.cvd||'',cvr:(m.cvr===''?null:m.cvr),sta:m.sta||'',src:'Saisie manuelle'})}
+  return [...map.values()];
+}
+function nextFrom(deb,d,res){if(!d)return addM(deb,6);if(res!=null&&res>=1000)return addM(d,3);if(d<addM(deb,11))return addM(deb,12);return addM(d,12)}
+function compute(ref,fy,per){
+  const ms=new Date(ref.getFullYear(),ref.getMonth(),1),me=new Date(ref.getFullYear(),ref.getMonth()+1,0);
+  const PS=per?per.s.getTime():ms.getTime(),PE=per?per.e.getTime():me.getTime();
+  return getRows().map(r=>{
+    const deb=fromIso(r.deb),rdv=fromIso(r.rdv),cvd=fromIso(r.cvd),key=r.ess+'|'+r.dos,s=SAIS[key]||{};
+    const sd=fromIso(s.d);let act;
+    const st=norm(r.sta);
+    if(!deb)act='Non : pré-TARV';else if(st.includes('deced')||st.includes('transf'))act='Non : décédé / transféré';else if(!rdv)act='Non : sans date de RDV';else act=(ref<=new Date(rdv.getTime()+28*DAY))?'Oui':'Non : IIT (> 28 j)';
+    const cvT=cvd?cvd.getTime():0, sT=sd?sd.getTime():0, last=Math.max(cvT,sT);
+    const lastD=last?new Date(last):null;
+    const tnInP=cvT>=PS&&cvT<=PE, saisieNew=sT>cvT;
+    let prob=null,due=null,nextRdv=null,eff=null,effSrc='',stat,ret=null;
+    if(act==='Oui'){
+      const fyc=d=>d<fy?fy:d;
+      prob=fyc(nextFrom(deb,lastD,saisieNew?null:r.cvr));          // projection depuis le dernier prélèvement (sert aux attendus)
+      if(saisieNew){eff=sd;effSrc='saisie'}else if(tnInP){eff=cvd;effSrc='Tier.Net'}
+      if(eff){
+        due=saisieNew?fyc(nextFrom(deb,cvd,r.cvr)):null;            // échéance du cycle qui vient d'être réalisé
+        nextRdv=nextFrom(deb,eff,effSrc==='Tier.Net'?r.cvr:null);    // prochain RDV CV à communiquer au patient
+        stat='Prélevé le '+fr(eff)+(effSrc==='Tier.Net'?' (Tier.Net)':'');
+      }else{
+        due=prob;
+        if(due<ref)stat='En retard';else if(due<=me)stat='À prélever ce mois';else stat='À venir';
+        if(stat!=='À venir')ret=Math.max(0,Math.round((ref-due)/DAY));
+      }
+    }else stat='Non actif';
+    return {...r,key,act,prob,due,nextRdv,stat,ret,last,lastD,cvd,deb,sd,eff,effSrc,com:s.c||''};
+  });
+}
+const inP=(p,x)=>x.act==='Oui'&&((x.last>=p.s.getTime()&&x.last<=p.e.getTime())||(x.prob&&x.prob<=p.e&&x.last<p.s.getTime()));
+const doneP=(p,x)=>x.act==='Oui'&&x.last>=p.s.getTime()&&x.last<=p.e.getTime();
+const pctCls=v=>v==null?'':(v>=.95?'pct-ok':v>=.85?'pct-warn':'pct-bad');
+const pctTxt=v=>v==null?'–':(v*100).toFixed(1).replace('.',',')+' %';
+const pillCls=s=>s.startsWith('Prélevé')?'p-ok':s==='En retard'?'p-bad':s==='À prélever ce mois'?'p-warn':'p-mut';
+
+function fillEss(){
+  const sel=$('selEss'),cur=sel.value;const list=[...new Set(getRows().map(r=>r.ess))].sort();$('essList').innerHTML=list.map(e=>`<option value="${esc(e)}">`).join('');
+  sel.innerHTML=`<option value="">Toutes les ESS (${list.length})</option>`+list.map(e=>`<option>${esc(e)}</option>`).join('');
+  if(list.includes(cur))sel.value=cur;
+}
+function fillPer(fy,ref){
+  const sel=$('selPer'),cur=sel.value;const ps=periods(fy);
+  sel.innerHTML=ps.map(p=>`<option value="${p.id}">${p.lab}</option>`).join('');
+  const m=ps.find(p=>p.type==='m'&&ref>=p.s&&ref<=p.e);sel.value=ps.some(p=>p.id===cur)?cur:(m?m.id:'m0');
+  return ps;
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let LAST=[];const EDITED=new Set();
+function render(){
+  if(!DATA)return;
+  const ref=fromIso($('dRef').value)||today();const fy=fromIso($('dFy').value)||defaultFy(ref);
+  const ps=fillPer(fy,ref);const per=ps.find(p=>p.id===$('selPer').value);
+  const all=compute(ref,fy,per);const essSel=$('selEss').value;const rows=essSel?all.filter(x=>x.ess===essSel):all;
+  renderMan();
+  if(DATA.example&&!Object.keys(MAN).length)showMsg('info','<span class="ex">Exemple</span> Ces patients sont fictifs. Cliquez sur « Importer l\'export Tier.Net » pour charger vos données.');
+  const act=rows.filter(x=>x.act==='Oui');
+  const c=s=>rows.filter(x=>x.stat===s).length;
+  const nLate=c('En retard');
+  $('track').innerHTML=nLate?`<div class="alert bad row" style="justify-content:space-between"><span>${nLate.toLocaleString('fr-FR')} patient(s) en retard de prélèvement CV${essSel?' à '+esc(essSel):''} : à mettre en tracking actif (appel, VAD par PE ou RECO).</span><button class="btn" id="btnTrack" type="button">Voir la liste de tracking</button></div>`:'';
+  if(nLate)$('btnTrack').onclick=()=>{statusFilter='En retard';EDITED.clear();page=0;render();$('listTitle').scrollIntoView({behavior:'smooth'})};
+  $('tiles').innerHTML=[['v',act.length,'Patients actifs (MER)'],['j',c('À prélever ce mois'),'À prélever ce mois'],['r',nLate,'En retard : tracking actif'],['o',rows.filter(x=>x.stat.startsWith('Prélevé')).length,'Prélevés dans la période (Tier.Net ou saisis)']].map(t=>`<div class="tile ${t[0]}"><b>${t[1].toLocaleString('fr-FR')}</b><span>${t[2]}</span></div>`).join('');
+  const att=rows.filter(x=>inP(per,x)),dn=att.filter(x=>doneP(per,x)),pv=att.length?dn.length/att.length:null;
+  $('period').innerHTML=`<h2>${esc(per.lab)}${essSel?' · '+esc(essSel):''}</h2><div><span class="n">${att.length}</span><span class="l">attendus</span></div><div><span class="n">${dn.length}</span><span class="l">réalisés</span></div><div><span class="n">${pctTxt(pv)}</span><span class="l">de réalisation</span></div><div><span class="n">${att.length-dn.length}</span><span class="l">non réalisés</span></div>`;
+  // chips
+  const opts=['Attendus de la période','À prélever ce mois','En retard','Prélevé','À venir','Tous','Non actifs'];
+  $('chips').innerHTML=opts.map(o=>`<button class="chip" aria-pressed="${o===statusFilter}" data-f="${o}">${o}</button>`).join('');
+  const q=norm($('q').value);
+  let L=rows.filter(x=>{
+    if(q&&!norm(x.dos).includes(q))return false;
+    if(EDITED.has(x.key))return true;
+    switch(statusFilter){case 'Attendus de la période':return inP(per,x);case 'À prélever ce mois':return x.stat==='À prélever ce mois';case 'En retard':return x.stat==='En retard';case 'Prélevé':return x.stat.startsWith('Prélevé');case 'À venir':return x.stat==='À venir';case 'Non actifs':return x.act!=='Oui';default:return x.act==='Oui'}
+  });
+  L.sort((a,b)=>(EDITED.has(b.key)-EDITED.has(a.key))||(statusFilter==='En retard'?((b.ret||0)-(a.ret||0)):(((a.due||a.prob||0)-(b.due||b.prob||0))||a.dos.localeCompare(b.dos))));
+  LAST=L;const pages=Math.max(1,Math.ceil(L.length/PAGE));if(page>=pages)page=pages-1;
+  $('listTitle').textContent=`Patients · ${statusFilter} (${L.length.toLocaleString('fr-FR')})`;
+  $('tb').innerHTML=L.slice(page*PAGE,page*PAGE+PAGE).map(x=>`<tr${x.stat==='En retard'?' class="late"':''}>
+    <td><b>${esc(x.dos)}</b>${x.src==='Saisie manuelle'||x.src==='Export corrigé'?' <span class="pill p-mut">'+(x.src==='Saisie manuelle'?'manuel':'corrigé')+'</span>':''}</td>
+    <td>${esc(x.ess)}</td><td class="num">${fr(x.deb)}</td><td class="num">${fr(x.cvd)}${x.cvr!=null&&x.cvd?'<br><span class="muted">'+x.cvr+' cp/ml</span>':''}</td>
+    <td class="num">${x.act==='Oui'?(x.due?fr(x.due):'<span class="muted">—</span>'):'<span class="muted">'+esc(x.act)+'</span>'}</td>
+    <td><span class="pill ${pillCls(x.stat)}">${esc(x.stat)}</span>${x.stat==='En retard'?'<br><span class="track">Tracking actif</span>':''}</td>
+    <td>${x.act==='Oui'?`<input type="date" id="d_${esc(x.key)}" data-k="${esc(x.key)}" data-t="d" value="${x.eff?iso(x.eff):''}" max="${iso(today())}" ${x.effSrc==='Tier.Net'?'title="Date reprise de Tier.Net" style="border-color:var(--ok)"':''} aria-label="Date effective ${esc(x.dos)}">${x.effSrc==='Tier.Net'?'<br><span class="muted">auto · Tier.Net</span>':''}`:''}</td>
+    <td class="num">${x.nextRdv?'<b>'+fr(x.nextRdv)+'</b><br><span class="muted">à communiquer</span>':''}</td>
+    <td>${x.act==='Oui'?`<input type="text" id="c_${esc(x.key)}" data-k="${esc(x.key)}" data-t="c" value="${esc(x.com)}" aria-label="Commentaire ${esc(x.dos)}">`:''}</td>
+    <td class="num">${x.ret??''}</td></tr>`).join('')||`<tr><td colspan="10" class="muted">Aucun patient pour ce filtre.</td></tr>`;
+  $('pinfo').textContent=`Page ${page+1} / ${pages}`;$('prev').disabled=page===0;$('next').disabled=page>=pages-1;
+  const trs=(list,body)=>{$(body).innerHTML=list.map(p=>{const a=rows.filter(x=>inP(p,x)),d=a.filter(x=>doneP(p,x)),v=a.length?d.length/a.length:null;return `<tr><td>${esc(p.lab)}</td><td class="num">${a.length}</td><td class="num">${d.length}</td><td class="num ${pctCls(v)}">${pctTxt(v)}</td></tr>`}).join('')};
+  trs(ps.filter(p=>p.type==='m'),'tbM');trs(ps.filter(p=>p.type==='q'),'tbQ');
+  const essL=[...new Set(all.map(x=>x.ess))].sort();
+  $('tbE').innerHTML=essL.map(e=>{const r=all.filter(x=>x.ess===e),a=r.filter(x=>inP(per,x)),d=a.filter(x=>doneP(per,x)),v=a.length?d.length/a.length:null;return `<tr><td>${esc(e)}</td><td class="num">${r.filter(x=>x.act==='Oui').length}</td><td class="num">${a.length}</td><td class="num">${d.length}</td><td class="num ${pctCls(v)}">${pctTxt(v)}</td></tr>`}).join('');
+}
+
+// events
+$('btnImport').onclick=()=>$('file').click();
+$('file').onchange=e=>{if(e.target.files[0])parseFile(e.target.files[0]);e.target.value=''};
+['selEss','selPer','dRef','dFy'].forEach(id=>$(id).addEventListener('change',()=>{EDITED.clear();page=0;render()}));
+$('q').addEventListener('input',()=>{page=0;render()});
+$('chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;statusFilter=b.dataset.f;EDITED.clear();page=0;render()});
+$('prev').onclick=()=>{page--;render()};$('next').onclick=()=>{page++;render()};
+$('tb').addEventListener('change',e=>{const t=e.target;if(!t.dataset.k)return;const k=t.dataset.k;const s=SAIS[k]||{};
+  if(t.dataset.t==='d'){if(t.value&&fromIso(t.value)>today()){t.value=s.d||'';showMsg('bad','La date effective ne peut pas être dans le futur.');return}s.d=t.value||undefined}else s.c=t.value||undefined;
+  if(!s.d&&!s.c)delete SAIS[k];else SAIS[k]=s;EDITED.add(k);
+  if(t.dataset.t==='d'&&t.value){const dos=k.split('|').slice(1).join('|');showMsg('info',`Prélèvement du ${fr(fromIso(t.value))} enregistré pour ${esc(dos)}. Prochain RDV CV calculé : voir la colonne « Prochain RDV CV ».`)}
+  if(!store.set(K_SAIS,SAIS))showMsg('bad','Cet appareil n\'a pas pu enregistrer la saisie. Copiez la sauvegarde pour ne pas la perdre.');
+  render();});
+$('btnCopy').onclick=async()=>{const lines=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV'].join('\t')].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):''].join('\t')));const txt=lines.join('\n');
+  try{await navigator.clipboard.writeText(txt);showMsg('info',`${LAST.length} lignes copiées. Collez-les dans Excel (Ctrl + V).`)}catch(e){$('bk').value=txt;$('bk').select();showMsg('info','Copie automatique refusée : la liste est dans la zone de texte « Sauvegarder ou restaurer », sélectionnée. Faites Ctrl + C.')}};
+$('btnBack').onclick=async()=>{const txt=JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN});$('bk').value=txt;try{await navigator.clipboard.writeText(txt);$('bkmsg').textContent=`Sauvegarde copiée (${Object.keys(SAIS).length} saisies). Collez-la dans un fichier texte ou un courriel.`}catch(e){$('bk').select();$('bkmsg').textContent='Le texte est sélectionné : faites Ctrl + C.'}};
+$('btnRest').onclick=()=>{try{const o=JSON.parse($('bk').value);if(o.type!=='cvasf-saisies')throw 0;SAIS=Object.assign({},SAIS,o.saisies);store.set(K_SAIS,SAIS);if(o.manuels){MAN=Object.assign({},MAN,o.manuels);store.set(K_MAN,MAN);fillEss()}$('bkmsg').textContent=`${Object.keys(o.saisies).length} saisies restaurées.`;render()}catch(e){$('bkmsg').textContent='Texte non reconnu : collez exactement le texte de sauvegarde copié.'}};
+let armed=false;$('btnClear').onclick=()=>{if(!armed){armed=true;$('btnClear').textContent='Confirmer : tout effacer';$('bkmsg').textContent='Cliquez encore pour effacer l\'export et les dates saisies de cet appareil.';return}
+  store.del(K_DATA);store.del(K_SAIS);store.del(K_MAN);SAIS={};MAN={};DATA=sample();armed=false;$('btnClear').textContent='Effacer les données de cet appareil';$('bkmsg').textContent='Données effacées.';fillEss();render()};
+
+function dl(name,text,type){const b=new Blob([text],{type});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+if(OFFLINE){['btnDl','btnBkDl','btnBkUp'].forEach(id=>$(id).hidden=false);$('offTag').textContent=' Version hors ligne : fonctionne sans Internet.'}
+$('btnDl').onclick=()=>{const rows=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV']].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):'']));
+  const csv='\uFEFF'+rows.map(r=>r.map(v=>{v=String(v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
+  const ess=$('selEss').value||'toutes ESS';dl(`Ayaan Suivi CV - ${ess} - ${iso(today())}.csv`,csv,'text/csv;charset=utf-8');showMsg('info',`${LAST.length} lignes téléchargées (fichier CSV, s'ouvre dans Excel).`)};
+$('btnBkDl').onclick=()=>{dl(`Ayaan Suivi CV - sauvegarde - ${iso(today())}.json`,JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN}),'application/json');$('bkmsg').textContent=`Sauvegarde enregistrée (${Object.keys(SAIS).length} saisies) dans le dossier Téléchargements.`};
+$('btnBkUp').onclick=()=>$('bkFile').click();
+$('bkFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('bk').value=r.result;$('btnRest').click()};r.readAsText(f);e.target.value=''};
+function renderMan(){
+  const keys=Object.keys(MAN).sort();$('manSum').textContent=`Patients saisis à la main (${keys.length})`;
+  const inBase=new Set(baseRows().map(r=>r.ess+'|'+r.dos));
+  $('tbMan').innerHTML=keys.map(k=>{const m=MAN[k];return `<tr><td>${esc(m.ess)}</td><td><b>${esc(m.dos)}</b></td><td>${fr(fromIso(m.deb))}</td><td>${fr(fromIso(m.rdv))}</td><td>${fr(fromIso(m.cvd))}</td><td class="num">${m.cvr??''}</td><td>${esc(m.sta||'En suivi')}</td><td>${inBase.has(k)?'corrige l\'export':'manuel'}</td><td class="row" style="flex-wrap:nowrap"><button class="btn ghost" type="button" data-ed="${esc(k)}">Modifier</button><button class="btn ghost" type="button" data-del="${esc(k)}">Supprimer</button></td></tr>`}).join('')||'<tr><td colspan="9" class="muted">Aucun patient saisi à la main.</td></tr>';
+}
+function manMsg(t){$('m_msg').textContent=t}
+$('manForm').addEventListener('submit',e=>{e.preventDefault();
+  const ess=$('m_ess').value.trim(),dos=$('m_dos').value.trim(),deb=$('m_deb').value;
+  if(!ess||!dos||!deb){manMsg('Renseignez l\'ESS, le N° dossier et la date de début TARV.');return}
+  const t=today();for(const id of ['m_deb','m_cvd']){if($(id).value&&fromIso($(id).value)>t){manMsg('Une date de début TARV ou de CV ne peut pas être dans le futur.');return}}
+  if($('m_cvd').value&&$('m_cvd').value<deb){manMsg('La date de la dernière CV est antérieure au début TARV : vérifiez.');return}
+  const cvr=$('m_cvr').value.trim();const n=cvr===''?'':toNum(cvr);if(cvr!==''&&n==null){manMsg('Résultat de CV non reconnu : saisissez un nombre (ex. 40 ou 1500).');return}
+  const k=ess+'|'+dos;MAN[k]={ess,dos,deb,rdv:$('m_rdv').value||'',cvd:$('m_cvd').value||'',cvr:n,sta:$('m_sta').value};
+  if(!store.set(K_MAN,MAN))manMsg('Cet appareil n\'a pas pu enregistrer : faites une sauvegarde.');else manMsg(`Patient ${dos} (${ess}) enregistré.`);
+  $('manForm').reset();fillEss();page=0;render();});
+$('m_reset').onclick=()=>{$('manForm').reset();manMsg('')};
+let delArm=null;
+$('tbMan').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.ed){const m=MAN[b.dataset.ed];$('m_ess').value=m.ess;$('m_dos').value=m.dos;$('m_deb').value=m.deb||'';$('m_rdv').value=m.rdv||'';$('m_cvd').value=m.cvd||'';$('m_cvr').value=m.cvr??'';$('m_sta').value=m.sta||'';manMsg('Modifiez puis cliquez sur « Enregistrer le patient ».');$('m_dos').focus();return}
+  if(b.dataset.del){if(delArm!==b.dataset.del){delArm=b.dataset.del;b.textContent='Confirmer';return}delete MAN[b.dataset.del];delArm=null;store.set(K_MAN,MAN);manMsg('Patient supprimé de la saisie manuelle.');fillEss();render()}});
+function buildReport(){
+  const ref=fromIso($('dRef').value)||today();const fy=fromIso($('dFy').value)||defaultFy(ref);
+  const ps=periods(fy);const cur=ps.find(p=>p.type==='m'&&ref>=p.s&&ref<=p.e)||ps[0];
+  const all=compute(ref,fy,cur);const essL=[...new Set(all.map(x=>x.ess))].sort();
+  const sites=essL.map(e=>{const r=all.filter(x=>x.ess===e);const act=r.filter(x=>x.act==='Oui');
+    const months=ps.filter(p=>p.type==='m').map(p=>{const a=r.filter(x=>inP(p,x));return{m:iso(p.s).slice(0,7),att:a.length,real:a.filter(x=>doneP(p,x)).length}});
+    const late=r.filter(x=>x.stat==='En retard').sort((a,b)=>(b.ret||0)-(a.ret||0));
+    return{ess:e,actifs:act.length,iit:r.filter(x=>x.act.startsWith('Non : IIT')).length,late:late.length,todo:r.filter(x=>x.stat==='À prélever ce mois').length,
+      doneMonth:r.filter(x=>doneP(cur,x)).length,attMonth:r.filter(x=>inP(cur,x)).length,manual:r.filter(x=>x.src==='Saisie manuelle'||x.src==='Export corrigé').length,
+      cvAJour:act.filter(x=>x.lastD&&x.lastD>=addM(ref,-12)).length,months,
+      lateList:late.slice(0,300).map(x=>({dos:x.dos,due:iso(x.due),ret:x.ret,rdv:x.rdv||''}))}});
+  return{type:'ayaan-rapport',v:1,gen:new Date().toISOString(),ref:iso(ref),fy:iso(fy),file:DATA&&DATA.file||'',example:!!(DATA&&DATA.example&&!Object.keys(MAN).length),sites};
+}
+$('btnRep').onclick=async()=>{const r=buildReport();if(r.example){showMsg('bad','Importez d\'abord l\'export Tier.Net du site : le rapport ne peut pas contenir les données d\'exemple.');return}
+  const txt=JSON.stringify(r);const name=`Ayaan rapport - ${r.sites.length===1?r.sites[0].ess:r.sites.length+' ESS'} - ${r.ref}.json`;
+  if(OFFLINE){dl(name,txt,'application/json');showMsg('info',`Rapport enregistré dans Téléchargements (« ${esc(name)} »). Envoyez ce fichier au centralisateur (WhatsApp, courriel ou clé USB).`);return}
+  try{await navigator.clipboard.writeText(txt);showMsg('info','Rapport copié. Collez-le dans le centralisateur (zone « Coller un rapport »), ou dans un message.')}catch(e){$('bk').value=txt;$('bk').select();showMsg('info','Copie refusée : le rapport est dans la zone de texte « Sauvegarder ou restaurer », sélectionné. Faites Ctrl + C.')}};
+// init
+const ref0=today();$('dRef').value=iso(ref0);$('dFy').value=iso(defaultFy(ref0));
+DATA=store.get(K_DATA)||sample();
+if(!DATA.example)showMsg('info',`Dernier export chargé : ${esc(DATA.file)} (importé le ${fr(fromIso(DATA.date))}).`);
+fillEss();render();
+})();
+</script>
+
+</body>
+</html>

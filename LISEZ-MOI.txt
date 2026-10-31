@@ -1,0 +1,60 @@
+AYAAN SUIVI CV – APPLICATION INSTALLABLE (téléphone, tablette, ordinateur)
+=========================================================================
+
+Ce dossier contient l'application Ayaan prête à être mise en ligne sur GitHub Pages
+(gratuit). Une fois en ligne, elle s'installe comme une vraie application et
+fonctionne ensuite SANS INTERNET.
+
+IMPORTANT – confidentialité
+- Ce dossier ne contient que le programme, aucune donnée de patient.
+- Les exports Tier.Net et les saisies restent dans l'appareil de chaque utilisateur.
+- Ne jamais déposer un export Tier.Net ou un fichier de patients sur GitHub.
+
+
+1. METTRE L'APPLICATION EN LIGNE (une seule fois, environ 10 minutes)
+--------------------------------------------------------------------
+1) Allez sur https://github.com et créez un compte gratuit (« Sign up »).
+   Votre nom d'utilisateur fera partie de l'adresse de l'application.
+2) En haut à droite, cliquez sur « + » puis « New repository ».
+   - Repository name : ayaan
+   - Cochez « Public »
+   - Cliquez sur « Create repository ».
+3) Sur la page suivante, cliquez sur le lien « uploading an existing file ».
+4) Ouvrez ce dossier « ayaan » sur votre ordinateur, sélectionnez TOUT son contenu
+   (index.html, central.html, manifest.webmanifest, sw.js, LISEZ-MOI.txt et le
+   dossier icons) et glissez-le dans la page GitHub.
+   Attention : glissez le contenu du dossier, pas le dossier « ayaan » lui-même.
+5) En bas, cliquez sur « Commit changes ».
+6) Cliquez sur l'onglet « Settings », puis à gauche sur « Pages ».
+   - Source : « Deploy from a branch »
+   - Branch : « main » et « / (root) », puis « Save ».
+7) Attendez 1 à 2 minutes. L'adresse de l'application est :
+      https://VOTRE-NOM-UTILISATEUR.github.io/ayaan/
+   (le centralisateur : https://VOTRE-NOM-UTILISATEUR.github.io/ayaan/central.html)
+
+
+2. INSTALLER L'APPLICATION SUR UN APPAREIL
+------------------------------------------
+La première ouverture demande Internet. Ensuite, Ayaan fonctionne hors ligne.
+
+- Téléphone ou tablette Android (Chrome) :
+  ouvrir l'adresse > menu ⋮ en haut à droite > « Installer l'application »
+  (ou « Ajouter à l'écran d'accueil »).
+- iPhone ou iPad (Safari) :
+  ouvrir l'adresse > bouton Partager (carré avec flèche) > « Sur l'écran d'accueil ».
+- Ordinateur Windows ou Mac (Chrome ou Edge) :
+  ouvrir l'adresse > cliquer sur l'icône d'installation à droite de la barre
+  d'adresse (écran avec une flèche) > « Installer ».
+
+L'icône Ayaan apparaît alors sur l'écran d'accueil ou sur le bureau.
+Sur ordinateur, un clic droit sur l'icône donne aussi accès au Centralisateur.
+
+
+3. METTRE À JOUR L'APPLICATION PLUS TARD
+----------------------------------------
+1) Sur GitHub, ouvrez le dépôt « ayaan » > « Add file » > « Upload files »,
+   déposez le nouveau index.html (ou central.html) > « Commit changes ».
+2) Ouvrez sw.js sur GitHub (icône crayon) et changez la ligne
+      const VERSION='ayaan-v1';
+   en  const VERSION='ayaan-v2';   (v3 la fois suivante, etc.) > « Commit changes ».
+Les appareils reçoivent la nouvelle version à la prochaine ouverture avec Internet.
