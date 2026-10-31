@@ -54,6 +54,7 @@ th{background:var(--violet-soft);color:var(--violet);text-align:left;font-size:1
 td{border-top:1px solid var(--line);padding:6px 8px;vertical-align:middle}
 td.num,th.num{text-align:right;font-family:var(--f-num);font-variant-numeric:tabular-nums}
 tr.click{cursor:pointer} tr.click:hover td{background:var(--violet-soft)} tr.sel td{background:var(--jaune-soft)}
+.tile b.pct-ok{color:var(--ok)} .tile b.pct-warn{color:var(--warn)} .tile b.pct-bad{color:var(--bad)}
 .pct-ok{color:var(--ok);font-weight:700}.pct-warn{color:var(--warn);font-weight:700}.pct-bad{color:var(--bad);font-weight:700}
 .pill{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap}
 .p-ok{background:var(--ok-soft);color:var(--ok)}.p-bad{background:var(--bad-soft);color:var(--bad)}.p-warn{background:var(--warn-soft);color:var(--warn)}
@@ -133,12 +134,12 @@ details summary{cursor:pointer;font-weight:600;color:var(--violet)}
   <section class="panel">
     <h2 id="tTitle">Situation par site</h2>
     <p class="muted">Cliquez sur une ligne pour voir l'évolution du site. Dernier rapport reçu de chaque ESS ; la tendance compare le nombre de patients en retard au rapport précédent.</p>
-    <div class="tw"><table><thead><tr><th>ESS</th><th>Zone</th><th>Dernier rapport</th><th class="num">Actifs</th><th class="num">Attendus</th><th class="num">Réalisés</th><th class="num">%</th><th class="num">En retard</th><th>Tendance</th><th class="num">CV à jour</th><th>Évolution % (12 mois)</th></tr></thead><tbody id="tbS"></tbody></table></div>
+    <div class="tw"><table><thead><tr><th>ESS</th><th>Zone</th><th>Dernier rapport</th><th class="num">Actifs</th><th class="num">Attendus</th><th class="num">Réalisés</th><th class="num">%</th><th class="num">En retard</th><th>Tendance</th><th class="num">CV à jour</th><th class="num">Suppression</th><th class="num">CV ≥ 1 000</th><th>Évolution % (12 mois)</th></tr></thead><tbody id="tbS"></tbody></table></div>
   </section>
 
   <section class="panel">
     <h2>Par zone de santé</h2>
-    <div class="tw"><table><thead><tr><th>Zone</th><th class="num">ESS</th><th class="num">Actifs</th><th class="num">Attendus</th><th class="num">Réalisés</th><th class="num">%</th><th class="num">En retard</th></tr></thead><tbody id="tbZ"></tbody></table></div>
+    <div class="tw"><table><thead><tr><th>Zone</th><th class="num">ESS</th><th class="num">Actifs</th><th class="num">Attendus</th><th class="num">Réalisés</th><th class="num">%</th><th class="num">En retard</th><th class="num">Suppression</th><th class="num">CV ≥ 1 000</th></tr></thead><tbody id="tbZ"></tbody></table></div>
   </section>
 
   <section class="panel" id="detail" hidden>
@@ -231,10 +232,11 @@ function render(){
   const L=all.filter(x=>!zone||zoneOf(x.ess)===zone);
   if(!all.length){msg('info','Aucun rapport pour l\'instant. Dans chaque site, cliquez sur « Envoyer au centralisateur » dans Ayaan Suivi CV, puis importez ici les fichiers reçus (plusieurs à la fois si besoin).');}
   const mOf=x=>(x.months||[]).find(m=>m.m===mk)||{att:0,real:0};
-  const T=L.reduce((a,x)=>{const m=mOf(x);a.act+=x.actifs;a.att+=m.att;a.real+=m.real;a.late+=x.late;a.old+=((today()-fromIso(x.ref))/DAY>stale)?1:0;return a},{act:0,att:0,real:0,late:0,old:0});
+  const T=L.reduce((a,x)=>{const m=mOf(x);a.act+=x.actifs;a.att+=m.att;a.real+=m.real;a.late+=x.late;a.old+=((today()-fromIso(x.ref))/DAY>stale)?1:0;a.pD+=x.pvlsD||0;a.pN+=x.pvlsN||0;a.cra+=x.cra||0;a.low+=x.low||0;return a},{act:0,att:0,real:0,late:0,old:0,pD:0,pN:0,cra:0,low:0});
+  const sp=pct(T.pN,T.pD);
   const tp=pct(T.real,T.att);
-  $('tiles').innerHTML=[['',L.length,'ESS suivies'],['',T.act.toLocaleString('fr-FR'),'Patients actifs (MER)'],['',T.att.toLocaleString('fr-FR'),'Attendus · '+(mk?mLab(mk):'')],['o',T.real.toLocaleString('fr-FR'),'Réalisés'],['',pctTxt(tp),'% de réalisation'],['r',T.late.toLocaleString('fr-FR'),'En retard : tracking actif'],['r',T.old,'Rapports anciens (> '+stale+' j)']]
-    .map(t=>`<div class="tile ${t[0]}"><b class="${t[2]==='% de réalisation'?pctCls(tp):''}">${t[1]}</b><span>${esc(t[2])}</span></div>`).join('');
+  $('tiles').innerHTML=[['',L.length,'ESS suivies'],['',T.act.toLocaleString('fr-FR'),'Patients actifs (MER)'],['',T.att.toLocaleString('fr-FR'),'Attendus · '+(mk?mLab(mk):'')],['o',T.real.toLocaleString('fr-FR'),'Réalisés'],['',pctTxt(tp),'% de réalisation'],['r',T.late.toLocaleString('fr-FR'),'En retard : tracking actif'],['',pctTxt(sp),'Suppression virale (< 1 000) : '+T.pN.toLocaleString('fr-FR')+' / '+T.pD.toLocaleString('fr-FR'),pctCls(sp)],['r',T.cra.toLocaleString('fr-FR'),'CV ≥ 1 000 : CRA · bas niveau 50–999 : '+T.low],['r',T.old,'Rapports anciens (> '+stale+' j)']]
+    .map(t=>`<div class="tile ${t[0]}"><b class="${t[2]==='% de réalisation'?pctCls(tp):(t[3]||'')}">${t[1]}</b><span>${esc(t[2])}</span></div>`).join('');
   $('tTitle').textContent=`Situation par site${zone?' · '+zone:''}${mk?' · '+mLab(mk):''}`;
   $('tbS').innerHTML=L.map(x=>{const m=mOf(x),p=pct(m.real,m.att),age=Math.round((today()-fromIso(x.ref))/DAY),d=x.prev?x.late-x.prev.late:null;
     const tr=d==null?'<span class="muted">1er rapport</span>':d>0?`<span class="pill p-bad">▲ +${d}</span>`:d<0?`<span class="pill p-ok">▼ ${d}</span>`:'<span class="pill p-warn">= 0</span>';
@@ -243,10 +245,10 @@ function render(){
     <td>${fr(fromIso(x.ref))} ${age>stale?`<span class="pill p-bad">${age} j</span>`:`<span class="muted">(${age} j)</span>`}</td>
     <td class="num">${x.actifs}</td><td class="num">${m.att}</td><td class="num">${m.real}</td><td class="num ${pctCls(p)}">${pctTxt(p)}</td>
     <td class="num">${x.late?`<b style="color:var(--bad)">${x.late}</b>`:0}</td><td>${tr}</td>
-    <td class="num">${pctTxt(pct(x.cvAJour||0,x.actifs))}</td><td>${spark(x.months||[],mk)}</td></tr>`}).join('')||'<tr><td colspan="11" class="muted">Aucun site pour ce filtre.</td></tr>';
+    <td class="num">${pctTxt(pct(x.cvAJour||0,x.actifs))}</td><td class="num ${pctCls(pct(x.pvlsN,x.pvlsD))}">${x.pvlsD!=null?pctTxt(pct(x.pvlsN,x.pvlsD)):'–'}</td><td class="num">${x.cra?`<b style="color:var(--bad)">${x.cra}</b>`:(x.pvlsD!=null?0:'–')}</td><td>${spark(x.months||[],mk)}</td></tr>`}).join('')||'<tr><td colspan="13" class="muted">Aucun site pour ce filtre.</td></tr>';
   // zones table
-  const Z={};all.forEach(x=>{const z=zoneOf(x.ess);const m=mOf(x);Z[z]=Z[z]||{n:0,act:0,att:0,real:0,late:0};Object.assign(Z[z],{n:Z[z].n+1,act:Z[z].act+x.actifs,att:Z[z].att+m.att,real:Z[z].real+m.real,late:Z[z].late+x.late})});
-  $('tbZ').innerHTML=Object.keys(Z).sort().map(z=>{const v=Z[z],p=pct(v.real,v.att);return `<tr><td><b>${esc(z)}</b></td><td class="num">${v.n}</td><td class="num">${v.act}</td><td class="num">${v.att}</td><td class="num">${v.real}</td><td class="num ${pctCls(p)}">${pctTxt(p)}</td><td class="num">${v.late}</td></tr>`}).join('')||'<tr><td colspan="7" class="muted">–</td></tr>';
+  const Z={};all.forEach(x=>{const z=zoneOf(x.ess);const m=mOf(x);Z[z]=Z[z]||{n:0,act:0,att:0,real:0,late:0,pD:0,pN:0,cra:0};Object.assign(Z[z],{n:Z[z].n+1,act:Z[z].act+x.actifs,att:Z[z].att+m.att,real:Z[z].real+m.real,late:Z[z].late+x.late,pD:Z[z].pD+(x.pvlsD||0),pN:Z[z].pN+(x.pvlsN||0),cra:Z[z].cra+(x.cra||0)})});
+  $('tbZ').innerHTML=Object.keys(Z).sort().map(z=>{const v=Z[z],p=pct(v.real,v.att);return `<tr><td><b>${esc(z)}</b></td><td class="num">${v.n}</td><td class="num">${v.act}</td><td class="num">${v.att}</td><td class="num">${v.real}</td><td class="num ${pctCls(p)}">${pctTxt(p)}</td><td class="num">${v.late}</td><td class="num ${pctCls(pct(v.pN,v.pD))}">${pctTxt(pct(v.pN,v.pD))}</td><td class="num">${v.cra}</td></tr>`}).join('')||'<tr><td colspan="9" class="muted">–</td></tr>';
   // detail
   const x=all.find(a=>a.ess===SEL);$('detail').hidden=!x;
   if(x){$('dTitle').textContent=x.ess;$('dSub').textContent=`${zoneOf(x.ess)} · dernier rapport du ${fr(fromIso(x.ref))} · ${x.hist.length} rapport(s) reçu(s)`;
