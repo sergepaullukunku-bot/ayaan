@@ -1,0 +1,37 @@
+{
+ "name": "Ayaan Centralisateur",
+ "short_name": "Ayaan Central",
+ "description": "Tableau de bord de toutes les ESS à partir des rapports Ayaan Suivi CV.",
+ "lang": "fr",
+ "start_url": "./central.html",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "any",
+ "background_color": "#231a66",
+ "theme_color": "#342787",
+ "icons": [
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png"
+  },
+  {
+   "src": "maskable-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "maskable"
+  },
+  {
+   "src": "maskable-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ],
+ "id": "./central.html"
+}
