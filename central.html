@@ -87,7 +87,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--violet)}
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
 </head>
-<body>
+<body data-need="central">
 <style>
 #pinLock{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:linear-gradient(135deg,#3d2fa0,#1d1554);color:#fff;padding:16px;overflow:auto}
 #pinLock[hidden]{display:none!important}
@@ -106,6 +106,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--violet)}
 <div id="pinLock" hidden role="dialog" aria-modal="true" aria-labelledby="pinT"><div class="pb">
   <h2 id="pinT">Ayaan</h2><p id="pinP"></p>
   <div id="pinCodeBox" class="code" hidden></div>
+  <select id="pinCat" aria-label="Type de compte" style="font:inherit;font-size:17px;padding:11px;border-radius:10px;border:2px solid #f2c400;background:#fff;color:#1f1b33;width:100%"><option value="">Choisissez votre type de compte…</option><option value="admin">1. Administrateurs</option><option value="user">2. Utilisateurs</option></select>
   <input id="pinName" type="text" autocomplete="off" maxlength="40" placeholder="Votre nom" aria-label="Votre nom" hidden>
   <input id="pinIn" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Code PIN">
   <input id="pinIn2" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Confirmer le code PIN" hidden>
@@ -113,6 +114,12 @@ details summary{cursor:pointer;font-weight:600;color:var(--violet)}
   <button type="button" id="pinOk">Valider</button>
   <button type="button" class="lnk" id="pinForgot">Code PIN oublié ?</button>
 </div></div>
+<div id="ayRights" hidden role="dialog" aria-modal="true" aria-labelledby="ayRT" style="position:fixed;inset:0;z-index:95;background:rgba(20,18,31,.55);display:grid;place-items:center;padding:16px">
+ <div style="background:var(--panel);color:var(--ink);border-radius:16px;width:min(560px,100%);max-height:90vh;overflow:auto;padding:18px;border-top:6px solid var(--jaune);display:grid;gap:10px">
+  <h2 id="ayRT" style="margin:0;color:var(--violet);font-size:20px">Mes droits</h2><div id="ayRS" class="muted"></div><div id="ayRL"></div>
+  <div><button class="btn ghost" type="button" id="ayRC">Fermer</button></div></div></div>
+<style>#ayRights[hidden]{display:none!important}.rgt{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--line);font-size:14px}.rgt b{min-width:38px}.rgt .y{color:var(--ok)}.rgt .n{color:var(--bad)}
+.mx{border-collapse:collapse;width:100%;font-size:13px}.mx th{background:var(--violet-soft);color:var(--violet);padding:6px;text-align:left;font-size:12px}.mx td{border-top:1px solid var(--line);padding:5px 6px}.mx td.c{text-align:center;font-weight:700}.mx td.c.y{color:var(--ok);background:var(--ok-soft)}.mx td.c.n{color:var(--bad);background:var(--bad-soft)}.mx tr.g td{background:var(--violet-soft);color:var(--violet);font-weight:700}</style>
 <script>
 /* Ayaan : utilisateurs, rôles et code PIN. Les PIN ne sont jamais stockés en clair (empreinte salée).
    Matrice d'accès : voir ROLES et PERMS ci-dessous (identique au fichier « Matrice d'accès Ayaan.xlsx »).
@@ -122,10 +129,14 @@ details summary{cursor:pointer;font-weight:600;color:var(--violet)}
 const K='ayaan.users.v1',KOLD='ayaan.pin.v1',IDLE=10*60*1000,AWAY=5*60*1000;
 const ROLES={admin:'Administrateur',gest:'Gestionnaire de données',prest:'Prestataire CV',sup:'Superviseur (lecture)'};
 const PERMS={
-  admin:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde','restaurer','effacer','utilisateurs','c_importer'],
-  gest:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde','c_importer'],
-  prest:['voir','saisir','exporter'],
+  admin:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde','restaurer','effacer','utilisateurs','central','c_importer'],
+  gest:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde'],
+  prest:['voir','saisir','exporter','importer','manuel'],
   sup:['voir','exporter']};
+const ACTIONS=[['Ayaan Suivi CV',[['Voir les listes, les tuiles et les tableaux','voir'],['Saisir prélèvement, résultat CV, date de retour, début du CRA, commentaire','saisir'],['Copier ou télécharger la liste (Excel)','exporter'],['Importer l\'export Tier.Net','importer'],['Saisie manuelle d\'un patient (ajouter, modifier, supprimer)','manuel'],['Envoyer le rapport au centralisateur','rapport'],['Copier ou enregistrer la sauvegarde','sauvegarde'],['Restaurer une sauvegarde','restaurer'],['Effacer les données de l\'appareil','effacer'],['Gérer les utilisateurs et les PIN','utilisateurs']]],
+ ['Centralisateur',[['Ouvrir le centralisateur et l\'utiliser (tableau de bord, import des rapports, sauvegardes)','central']]],
+ ['Compte personnel',[['Changer son propre code PIN','*'],['Verrouiller l\'application','*'],['Voir ses droits (« Mes droits »)','*']]]];
+const okFor=(role,p)=>p==='*'||(PERMS[role]||[]).includes(p);
 const $=id=>document.getElementById(id);
 const rd=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};
 const wr=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
@@ -142,29 +153,34 @@ const save=()=>wr(K,DB);
 const hasUsers=()=>!!(DB&&DB.users&&DB.users.length);
 let CUR=null;
 function badPin(a){if(!/^\d{4,6}$/.test(a))return 'Le code PIN doit contenir 4 à 6 chiffres.';if(/^(\d)\1+$/.test(a)||'0123456789'.includes(a)||'9876543210'.includes(a))return 'Code trop facile à deviner (ex. 0000, 1234) : choisissez-en un autre.';return ''}
-async function findByPin(pin,exceptId){for(const u of (DB&&DB.users)||[]){if(u.id!==exceptId&&await h(u.s,pin)===u.h)return u}return null}
+async function findByPin(pin,exceptId,cat){for(const u of (DB&&DB.users)||[]){if(cat==='admin'&&u.role!=='admin')continue;if(cat==='user'&&u.role==='admin')continue;if(u.id!==exceptId&&await h(u.s,pin)===u.h)return u}return null}
 function login(u){CUR=u;ss.set('ayaan.cur',u.id);ss.set('ayaan.unl',String(Date.now()));paint();document.dispatchEvent(new CustomEvent('ayaan-user',{detail:pub()}))}
 const pub=()=>CUR?{id:CUR.id,nom:CUR.nom,role:CUR.role,roleLab:ROLES[CUR.role]}:null;
-function paint(){document.querySelectorAll('[data-who]').forEach(el=>{el.innerHTML=CUR?`Connecté : <b>${CUR.nom.replace(/[&<>"]/g,'')}</b> · ${ROLES[CUR.role]}`:''});
+function paint(){document.querySelectorAll('[data-who]').forEach(el=>{el.innerHTML=CUR?`Connecté : <b>${CUR.nom.replace(/[&<>"]/g,'')}</b> · ${ROLES[CUR.role]} · <button type="button" onclick="AY.showRights()" style="font:inherit;font-size:12px;background:none;border:0;color:var(--bleu);text-decoration:underline;cursor:pointer;padding:0">Mes droits</button>`:''});
   document.querySelectorAll('[data-perm]').forEach(el=>{const ok=can(el.dataset.perm);if(el.tagName==='SELECT'||el.tagName==='INPUT'||el.tagName==='TEXTAREA')el.disabled=!ok;else el.hidden=!ok})}
 function can(p){return !!(CUR&&(PERMS[CUR.role]||[]).includes(p))}
 // ----- écran de verrouillage
 let mode='',fails=0,waitUntil=0,last=Date.now(),hiddenAt=0,target=null;
-const L=$('pinLock'),N=$('pinName'),I=$('pinIn'),I2=$('pinIn2'),E=$('pinErr'),P=$('pinP'),OK=$('pinOk'),F=$('pinForgot'),CB=$('pinCodeBox');
-function show(m){mode=m;L.hidden=false;E.textContent='';I.value='';I2.value='';N.value='';N.hidden=true;I.hidden=false;I2.hidden=true;CB.hidden=true;F.hidden=m!=='unlock';OK.textContent='Valider';
+const CAT=$('pinCat'),L=$('pinLock'),N=$('pinName'),I=$('pinIn'),I2=$('pinIn2'),E=$('pinErr'),P=$('pinP'),OK=$('pinOk'),F=$('pinForgot'),CB=$('pinCodeBox');
+function show(m){mode=m;L.hidden=false;E.textContent='';I.value='';I2.value='';N.value='';N.hidden=true;CAT.hidden=m!=='unlock';CAT.value='';I.hidden=m==='unlock';OK.hidden=m==='unlock';I2.hidden=true;CB.hidden=true;F.hidden=true;OK.textContent='Valider';
   I.type='password';I.maxLength=6;I.setAttribute('inputmode','numeric');I.setAttribute('aria-label','Code PIN');
-  if(m==='unlock')P.textContent='Entrez votre code PIN pour ouvrir l\'application.';
+  if(m==='unlock')P.textContent='Choisissez votre type de compte, puis entrez votre code PIN.';
+  else if(m==='denied'){P.textContent='Le centralisateur est réservé aux administrateurs. Votre compte est un compte utilisateur.';I.hidden=true;OK.hidden=false;OK.textContent='Retour à Ayaan Suivi CV';F.hidden=true}
   else if(m==='first'){P.textContent='Première utilisation : créez le compte administrateur de cet appareil. Saisissez votre nom, puis un code PIN de 4 à 6 chiffres et confirmez-le.';N.hidden=false;I2.hidden=false}
   else if(m==='newpin'){P.textContent='Choisissez votre nouveau code PIN, puis confirmez-le.';I2.hidden=false}
   else if(m==='recover'){P.textContent='Administrateur : entrez le code de secours noté à la création (ex. ABCD-1234). Les autres utilisateurs demandent à l\'administrateur de réinitialiser leur PIN.';I.removeAttribute('inputmode');I.type='text';I.maxLength=9;I.setAttribute('aria-label','Code de secours')}
-  setTimeout(()=>(N.hidden?I:N).focus(),50)}
+  if(m!=='unlock')OK.hidden=false;
+  if(m==='unlock'&&document.body&&document.body.dataset.need==='central'){CAT.value='admin';CAT.hidden=true;I.hidden=false;OK.hidden=false;F.hidden=false;P.innerHTML='Centralisateur : connexion réservée aux <b>administrateurs</b>. Entrez votre code PIN.<br><a href="index.html" style="color:#f2c400">Retour à Ayaan Suivi CV</a>'}
+  setTimeout(()=>(m==='unlock'&&!CAT.hidden?CAT:(N.hidden?I:N)).focus(),50)}
 function hide(){L.hidden=true;mode='';last=Date.now()}
 async function submit(){
   if(mode==='unlock'||mode==='change'){
     if(Date.now()<waitUntil){E.textContent='Trop d\'essais : patientez '+Math.ceil((waitUntil-Date.now())/1000)+' s.';return}
-    const u=mode==='change'?((CUR&&await h(CUR.s,I.value)===CUR.h)?CUR:null):await findByPin(I.value);
+    if(mode==='unlock'&&!CAT.value){E.textContent='Choisissez d\'abord votre type de compte.';return}
+    const u=mode==='change'?((CUR&&await h(CUR.s,I.value)===CUR.h)?CUR:null):await findByPin(I.value,null,CAT.value);
     if(!u){fails++;I.value='';E.textContent='Code PIN incorrect.';if(fails>=5){waitUntil=Date.now()+30000;fails=0;E.textContent='5 essais incorrects : patientez 30 s.'}return}
-    fails=0;if(mode==='change'){target=u;show('newpin');return}login(u);hide();return}
+    fails=0;if(mode==='change'){target=u;show('newpin');return}login(u);if(needOk())hide();else show('denied');return}
+  if(mode==='denied'){location.href='index.html';return}
   if(mode==='first'||mode==='newpin'){
     const nm=N.value.trim(),a=I.value.trim(),b=I2.value.trim();
     if(mode==='first'&&nm.length<2){E.textContent='Saisissez votre nom.';return}
@@ -181,6 +197,8 @@ async function submit(){
     const v=I.value.trim().toUpperCase().replace(/\s/g,'');const vv=v.includes('-')?v:v.slice(0,4)+'-'+v.slice(4);
     if(DB&&await h(DB.rs,vv)===DB.rh){target=DB.users.find(u=>u.role==='admin');show('newpin');P.textContent=`Code de secours accepté. Choisissez un nouveau code PIN pour ${target.nom} (administrateur), puis confirmez-le.`}else E.textContent='Code de secours incorrect.'}
 }
+CAT.addEventListener('change',()=>{const on=!!CAT.value;I.hidden=!on;OK.hidden=!on;F.hidden=!on||CAT.value!=='admin';E.textContent='';if(on){P.textContent=CAT.value==='admin'?'Administrateur : entrez votre code PIN.':'Utilisateur : entrez votre code PIN.';I.focus()}});
+const needOk=()=>{const n=document.body&&document.body.dataset.need;return !n||can(n)};
 OK.onclick=submit;
 [N,I,I2].forEach(x=>x.addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();if(x===N)I.focus();else if(x===I&&!I2.hidden&&!I2.value)I2.focus();else submit()}));
 F.onclick=()=>show('recover');
@@ -191,7 +209,9 @@ addEventListener('pagehide',()=>{if(!mode)ss.set('ayaan.unl',String(last))});
 // ----- API pour les pages
 const AY=window.AY={ROLES,PERMS,can,user:pub,
   lock(){if(hasUsers())show('unlock')},
-  changePin(){if(!CUR)return;show('unlock');mode='change';F.hidden=true;P.textContent='Entrez votre code PIN actuel.'},
+  changePin(){if(!CUR)return;show('unlock');mode='change';F.hidden=true;CAT.hidden=true;I.hidden=false;OK.hidden=false;setTimeout(()=>I.focus(),60);P.textContent='Entrez votre code PIN actuel.'},
+  showRights(){if(!CUR)return;$('ayRS').textContent=CUR.nom+' · '+ROLES[CUR.role];$('ayRL').innerHTML=ACTIONS.map(([g,a])=>`<div style="font-weight:700;color:var(--violet);margin-top:8px">${g}</div>`+a.map(([t,p])=>{const ok=okFor(CUR.role,p);return `<div class="rgt"><b class="${ok?'y':'n'}">${ok?'Oui':'Non'}</b><span>${t}</span></div>`}).join('')).join('');$('ayRights').hidden=false;$('ayRC').focus()},
+  matrixHTML(){const rk=Object.keys(ROLES);return `<table class="mx"><thead><tr><th>Action</th>${rk.map(r=>`<th style="text-align:center">${ROLES[r]}</th>`).join('')}</tr></thead><tbody>`+ACTIONS.map(([g,a])=>`<tr class="g"><td colspan="${rk.length+1}">${g}</td></tr>`+a.map(([t,p])=>`<tr><td>${t}</td>${rk.map(r=>{const ok=okFor(r,p);return `<td class="c ${ok?'y':'n'}">${ok?'Oui':'Non'}</td>`}).join('')}</tr>`).join('')).join('')+'</tbody></table>'},
   list(){return (DB&&DB.users||[]).map(u=>({id:u.id,nom:u.nom,role:u.role,roleLab:ROLES[u.role],cree:u.cree}))},
   async save(id,nom,role,pin){if(!can('utilisateurs'))return 'Action réservée à l\'administrateur.';nom=String(nom||'').trim();if(nom.length<2)return 'Saisissez le nom de l\'utilisateur.';if(!ROLES[role])return 'Choisissez un rôle.';
     const u=id?DB.users.find(x=>x.id===id):null;if(id&&!u)return 'Utilisateur introuvable.';
@@ -202,11 +222,11 @@ const AY=window.AY={ROLES,PERMS,can,user:pub,
   del(id){if(!can('utilisateurs'))return 'Action réservée à l\'administrateur.';const u=DB.users.find(x=>x.id===id);if(!u)return 'Utilisateur introuvable.';if(CUR&&CUR.id===id)return 'Vous ne pouvez pas supprimer votre propre compte.';
     if(u.role==='admin'&&DB.users.filter(x=>x.role==='admin').length<2)return 'Il faut garder au moins un administrateur.';DB.users=DB.users.filter(x=>x.id!==id);save();return ''}
 };
-window.ayaanLock=AY.lock;window.ayaanChangePin=AY.changePin;
+window.ayaanLock=AY.lock;$('ayRC').onclick=()=>{$('ayRights').hidden=true};$('ayRights').addEventListener('click',e=>{if(e.target.id==='ayRights')$('ayRights').hidden=true});window.ayaanChangePin=AY.changePin;
 // ----- démarrage
 (function(){if(!hasUsers()){show('first');return}
   const cid=ss.get('ayaan.cur'),u=+ss.get('ayaan.unl')||0,me=DB.users.find(x=>x.id===cid);
-  if(me&&u&&Date.now()-u<IDLE){CUR=me;document.addEventListener('DOMContentLoaded',()=>{paint();document.dispatchEvent(new CustomEvent('ayaan-user',{detail:pub()}))});if(document.readyState!=='loading')setTimeout(()=>{paint();document.dispatchEvent(new CustomEvent('ayaan-user',{detail:pub()}))},0);return}
+  if(me&&u&&Date.now()-u<IDLE&&(!(document.body&&document.body.dataset.need)||okFor(me.role,document.body.dataset.need))){CUR=me;document.addEventListener('DOMContentLoaded',()=>{paint();document.dispatchEvent(new CustomEvent('ayaan-user',{detail:pub()}))});if(document.readyState!=='loading')setTimeout(()=>{paint();document.dispatchEvent(new CustomEvent('ayaan-user',{detail:pub()}))},0);return}
   show('unlock')})();
 })();
 </script>
