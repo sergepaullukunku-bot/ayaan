@@ -1,5 +1,5 @@
 // Ayaan : fonctionnement hors ligne. Changer VERSION à chaque mise à jour des fichiers.
-const VERSION='ayaan-v8';
+const VERSION='ayaan-v9';
 const FILES=['./','./index.html','./central.html','./manifest.webmanifest','./central.webmanifest','./icon-192.png','./icon-512.png','./maskable-192.png','./maskable-512.png','./apple-touch-icon.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(VERSION).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(n=>n!==VERSION).map(n=>caches.delete(n)))).then(()=>self.clients.claim()))});
@@ -11,3 +11,6 @@ self.addEventListener('fetch',e=>{
     return hit||net;
   })));
 });
+
+// Toucher la notification ouvre Ayaan
+self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(l=>{for(const c of l){if(c.url.includes('index.html')||c.url.endsWith('/'))return c.focus()}return clients.openWindow('./index.html')}))});

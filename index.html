@@ -99,6 +99,15 @@ textarea{min-height:90px;font-family:var(--f-num);font-size:12px}
   table.cards .res{min-width:0}
   table.cards td[colspan]{grid-column:1/-1}
 }
+
+#daySum{position:fixed;inset:0;z-index:90;background:rgba(20,18,31,.55);display:grid;place-items:center;padding:16px}
+#daySum[hidden]{display:none!important}
+#daySum .box{background:var(--panel);color:var(--ink);border-radius:16px;width:min(460px,100%);padding:18px;display:grid;gap:12px;border-top:6px solid var(--jaune);max-height:92vh;overflow:auto}
+#daySum h2{margin:0;color:var(--violet);font-size:20px}
+#daySum .it{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg);cursor:pointer;font:inherit;color:inherit;text-align:left;width:100%}
+#daySum .it b{font-family:var(--f-num);font-size:26px;min-width:52px;text-align:right}
+#daySum .it span{font-size:14px}
+#daySum .acts{display:flex;flex-wrap:wrap;gap:8px}
 #msg{position:sticky;top:0;z-index:20}#msg:empty{display:none}
 #splash{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:linear-gradient(135deg,#3d2fa0,#1d1554);color:#fff;transition:opacity .45s ease}
 #splash.out{opacity:0;pointer-events:none}
@@ -258,6 +267,13 @@ window.ayaanLock=AY.lock;window.ayaanChangePin=AY.changePin;
   <path d="M40 62 C48 60 50 80 60 82 C66 83.5 72 83 80 83" fill="none" stroke="#342787" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
   <circle cx="80.5" cy="83" r="6.5" fill="#f2c400" stroke="#342787" stroke-width="2.5"/>
 </svg><div class="nm">Ayaan</div><div class="sb">SUIVI CV</div></div></div>
+<div id="daySum" hidden role="dialog" aria-modal="true" aria-labelledby="dsT"><div class="box">
+  <div><h2 id="dsT">Aujourd'hui</h2><div class="muted" id="dsSub"></div></div>
+  <div id="dsList" style="display:grid;gap:8px"></div>
+  <div class="muted">Touchez une ligne pour ouvrir la liste. Le message à partager ne contient que des chiffres, aucun nom ni N° dossier.</div>
+  <div class="acts"><button class="btn" type="button" id="dsWa">Envoyer par WhatsApp</button><button class="btn ghost" type="button" id="dsSms">SMS</button><button class="btn ghost" type="button" id="dsShare" hidden>Partager…</button><button class="btn ghost" type="button" id="dsCopy">Copier</button></div>
+  <div class="acts"><button class="btn ghost" type="button" id="dsNotif" hidden>Activer les notifications</button><button class="btn ghost" type="button" id="dsClose">Fermer</button></div>
+</div></div>
 <div class="wrap">
   <header class="top">
     <div class="brandrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" class="logo" aria-hidden="true">
@@ -276,7 +292,7 @@ window.ayaanLock=AY.lock;window.ayaanChangePin=AY.changePin;
     </div></div>
     <div class="row">
       <input type="file" id="file" accept=".xlsx,.csv" hidden>
-      <button class="btn ghost" type="button" onclick="ayaanLock()" title="Verrouiller l'application">Verrouiller</button><a class="btn ghost" href="central.html" style="text-decoration:none">Ouvrir le Centralisateur</a><button class="btn ghost" id="btnRep" type="button" data-perm="rapport">Envoyer au centralisateur</button>
+      <button class="btn ghost" type="button" id="btnDay">Résumé du jour</button><button class="btn ghost" type="button" onclick="ayaanLock()" title="Verrouiller l'application">Verrouiller</button><a class="btn ghost" href="central.html" style="text-decoration:none">Ouvrir le Centralisateur</a><button class="btn ghost" id="btnRep" type="button" data-perm="rapport">Envoyer au centralisateur</button>
       <button class="btn" id="btnImport" data-perm="importer">Importer l'export Tier.Net</button>
     </div>
   </header>
@@ -513,7 +529,10 @@ function compute(ref,fy,per){
         if(stat!=='À venir')ret=Math.max(0,Math.round((ref-due)/DAY));
       }
     }else stat='Non actif';
-    return {...r,key,act,prob,due,nextRdv,stat,ret,last,lastD,cvd,deb,sd,eff,effSrc,com:s.c||'',res,resD,resRet,resSrc,pend,rIn:s.r||'',rdIn:s.rd||'',by:s.u?(s.u+(s.t?' · '+s.t:'')):''};
+    const craD=fromIso(s.cra),hi=act==='Oui'&&res!=null&&res>=1000,craTodo=hi&&(!craD||(resD&&craD<resD));
+    const same=(a,b)=>a&&b&&a.getTime()===b.getTime();
+    const todayF=act==='Oui'&&!eff&&((due&&same(due,ref))||(rdv&&same(rdv,ref)&&(stat==='En retard'||stat==='À prélever ce mois')));
+    return {...r,key,act,prob,due,nextRdv,stat,ret,last,lastD,cvd,deb,sd,eff,effSrc,com:s.c||'',res,resD,resRet,resSrc,pend,craIn:s.cra||'',craTodo,todayF,rdvD:rdv,rIn:s.r||'',rdIn:s.rd||'',by:s.u?(s.u+(s.t?' · '+s.t:'')):''};
   });
 }
 const inP=(p,x)=>x.act==='Oui'&&((x.last>=p.s.getTime()&&x.last<=p.e.getTime())||(x.prob&&x.prob<=p.e&&x.last<p.s.getTime()));
@@ -559,13 +578,13 @@ function render(){
   const att=rows.filter(x=>inP(per,x)),dn=att.filter(x=>doneP(per,x)),pv=att.length?dn.length/att.length:null;
   $('period').innerHTML=`<h2>${esc(per.lab)}${essSel?' · '+esc(essSel):''}</h2><div><span class="n">${att.length}</span><span class="l">attendus</span></div><div><span class="n">${dn.length}</span><span class="l">réalisés</span></div><div><span class="n">${pctTxt(pv)}</span><span class="l">de réalisation</span></div><div><span class="n">${att.length-dn.length}</span><span class="l">non réalisés</span></div>`;
   // chips
-  const opts=['Attendus de la période','À prélever ce mois','En retard','Prélevé','À venir','CV ≥ 1 000 (CRA)','Résultat en attente','Tous','Non actifs'];
+  const opts=['Aujourd\'hui','CRA à commencer','Attendus de la période','À prélever ce mois','En retard','Prélevé','À venir','CV ≥ 1 000 (CRA)','Résultat en attente','Tous','Non actifs'];
   $('chips').innerHTML=opts.map(o=>`<button class="chip" aria-pressed="${o===statusFilter}" data-f="${o}">${o}</button>`).join('');
   const q=norm($('q').value);
   let L=rows.filter(x=>{
     if(q&&!norm(x.dos).includes(q))return false;
     if(EDITED.has(x.key))return true;
-    switch(statusFilter){case 'Attendus de la période':return inP(per,x);case 'À prélever ce mois':return x.stat==='À prélever ce mois';case 'En retard':return x.stat==='En retard';case 'Prélevé':return x.stat.startsWith('Prélevé');case 'À venir':return x.stat==='À venir';case 'Non actifs':return x.act!=='Oui';case 'CV ≥ 1 000 (CRA)':return x.act==='Oui'&&x.res!=null&&x.res>=1000;case 'Résultat en attente':return x.act==='Oui'&&x.pend;default:return x.act==='Oui'}
+    switch(statusFilter){case 'Aujourd\'hui':return x.todayF;case 'CRA à commencer':return x.craTodo;case 'Attendus de la période':return inP(per,x);case 'À prélever ce mois':return x.stat==='À prélever ce mois';case 'En retard':return x.stat==='En retard';case 'Prélevé':return x.stat.startsWith('Prélevé');case 'À venir':return x.stat==='À venir';case 'Non actifs':return x.act!=='Oui';case 'CV ≥ 1 000 (CRA)':return x.act==='Oui'&&x.res!=null&&x.res>=1000;case 'Résultat en attente':return x.act==='Oui'&&x.pend;default:return x.act==='Oui'}
   });
   L.sort((a,b)=>(EDITED.has(b.key)-EDITED.has(a.key))||(statusFilter==='En retard'?((b.ret||0)-(a.ret||0)):(((a.due||a.prob||0)-(b.due||b.prob||0))||a.dos.localeCompare(b.dos))));
   LAST=L;const pages=Math.max(1,Math.ceil(L.length/PAGE));if(page>=pages)page=pages-1;
@@ -574,9 +593,9 @@ function render(){
     <td><b>${esc(x.dos)}</b>${x.src==='Saisie manuelle'||x.src==='Export corrigé'?' <span class="pill p-mut">'+(x.src==='Saisie manuelle'?'manuel':'corrigé')+'</span>':''}</td>
     <td>${esc(x.ess)}</td><td class="num">${fr(x.deb)}</td><td class="num">${fr(x.cvd)}${x.cvr!=null&&x.cvd?'<br><span class="muted">'+x.cvr+' cp/ml</span>':''}</td>
     <td class="num">${x.act==='Oui'?(x.due?fr(x.due):'<span class="muted">—</span>'):'<span class="muted">'+esc(x.act)+'</span>'}</td>
-    <td><span class="pill ${pillCls(x.stat)}">${esc(x.stat)}</span>${x.stat==='En retard'?'<br><span class="track">Tracking actif</span>':''}</td>
+    <td><span class="pill ${pillCls(x.stat)}">${esc(x.stat)}</span>${x.stat==='En retard'?'<br><span class="track">Tracking actif</span>':''}${x.todayF?'<br><span class="pill p-warn">Aujourd\'hui</span>':''}</td>
     <td>${x.act==='Oui'?`<input type="date" id="d_${esc(x.key)}" data-k="${esc(x.key)}" data-t="d" value="${x.eff?iso(x.eff):''}" max="${iso(today())}" ${x.effSrc==='Tier.Net'?'title="Date reprise de Tier.Net" style="border-color:var(--ok)"':''} aria-label="Date effective ${esc(x.dos)}">${x.effSrc==='Tier.Net'?'<br><span class="muted">auto · Tier.Net</span>':''}`:''}</td>
-    <td>${x.act==='Oui'?(()=>{const rc=resCls(x.res);return `<div class="res"><input type="text" data-k="${esc(x.key)}" data-t="r" value="${esc(x.rIn)}" placeholder="${x.resSrc==='Tier.Net'?esc(fmtRes(x.res)):'ex. 40, TND'}" aria-label="Résultat CV ${esc(x.dos)}">${rc?`<span class="pill ${rc.c}">${x.res>=1000?'':fmtRes(x.res)+' · '}${rc.t}</span>`:''}${x.resSrc==='Tier.Net'?'<span class="muted">auto · Tier.Net</span>':''}${x.pend?`<span class="muted">en attente${x.lastD?' depuis '+Math.round((today()-x.lastD)/DAY)+' j':''}</span>`:''}</div>`})():''}</td>
+    <td>${x.act==='Oui'?(()=>{const rc=resCls(x.res);return `<div class="res"><input type="text" data-k="${esc(x.key)}" data-t="r" value="${esc(x.rIn)}" placeholder="${x.resSrc==='Tier.Net'?esc(fmtRes(x.res)):'ex. 40, TND'}" aria-label="Résultat CV ${esc(x.dos)}">${rc?`<span class="pill ${rc.c}">${x.res>=1000?'':fmtRes(x.res)+' · '}${rc.t}</span>`:''}${x.resSrc==='Tier.Net'?'<span class="muted">auto · Tier.Net</span>':''}${x.pend?`<span class="muted">en attente${x.lastD?' depuis '+Math.round((today()-x.lastD)/DAY)+' j':''}</span>`:''}${x.res!=null&&x.res>=1000?`<label class="muted" style="display:grid;gap:2px;margin-top:4px">Début du CRA<input type="date" data-k="${esc(x.key)}" data-t="cra" value="${esc(x.craIn)}" max="${iso(today())}" aria-label="Date de début du CRA ${esc(x.dos)}"></label>${x.craTodo?'<span class="pill p-cra">CRA à commencer</span>':'<span class="pill p-ok">CRA commencé</span>'}`:''}</div>`})():''}</td>
     <td>${x.act==='Oui'?`<input type="date" data-k="${esc(x.key)}" data-t="rd" value="${esc(x.rdIn)}" max="${iso(today())}" aria-label="Date retour du résultat ${esc(x.dos)}">`:''}</td>
     <td class="num">${x.nextRdv?'<b>'+fr(x.nextRdv)+'</b><br><span class="muted">à communiquer</span>':''}</td>
     <td>${x.act==='Oui'?`<input type="text" id="c_${esc(x.key)}" data-k="${esc(x.key)}" data-t="c" value="${esc(x.com)}" aria-label="Commentaire ${esc(x.dos)}">${x.by?'<br><span class="muted">saisi par '+esc(x.by)+'</span>':''}`:''}</td>
@@ -608,13 +627,16 @@ $('tb').addEventListener('change',e=>{const t=e.target;if(!t.dataset.k)return;if
   else if(t.dataset.t==='rd'){if(t.value&&fromIso(t.value)>today()){t.value=s.rd||'';showMsg('bad','La date de retour ne peut pas être dans le futur.');return}
     if(t.value&&row0&&row0.lastD&&fromIso(t.value)<row0.lastD){t.value=s.rd||'';showMsg('bad','La date de retour du résultat est antérieure à la date du prélèvement ('+fr(row0.lastD)+') : vérifiez.');return}
     s.rd=t.value||undefined}
+  else if(t.dataset.t==='cra'){if(t.value&&fromIso(t.value)>today()){t.value=s.cra||'';showMsg('bad','La date de début du CRA ne peut pas être dans le futur.');return}
+    if(t.value&&row0&&row0.resD&&fromIso(t.value)<row0.resD){t.value=s.cra||'';showMsg('bad','La date de début du CRA est antérieure au prélèvement de ce résultat ('+fr(row0.resD)+') : vérifiez.');return}
+    s.cra=t.value||undefined;if(t.value)showMsg('info','Début du CRA enregistré le '+fr(fromIso(t.value))+'. Prévoir 3 séances, puis une CV de contrôle 3 mois après le résultat.')}
   else s.c=t.value||undefined;
-  if(!s.d&&!s.c&&!s.r&&!s.rd)delete SAIS[k];else{const u=AY.user();s.u=u?u.nom:'';s.t=(d=>iso(d)+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date());SAIS[k]=s}EDITED.add(k);
+  if(!s.d&&!s.c&&!s.r&&!s.rd&&!s.cra)delete SAIS[k];else{const u=AY.user();s.u=u?u.nom:'';s.t=(d=>iso(d)+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date());SAIS[k]=s}EDITED.add(k);
   if(t.dataset.t==='d'&&t.value){const dos=k.split('|').slice(1).join('|');showMsg('info',`Prélèvement du ${fr(fromIso(t.value))} enregistré pour ${esc(dos)}. Prochain RDV CV calculé : voir la colonne « Prochain RDV CV ».`)}
   if(!store.set(K_SAIS,SAIS))showMsg('bad','Cet appareil n\'a pas pu enregistrer la saisie. Copiez la sauvegarde pour ne pas la perdre.');
   const fk=t.dataset.k,ft=t.dataset.t;render();const el=document.querySelector(`#tb [data-k="${CSS.escape(fk)}"][data-t="${ft}"]`);if(el){const ins=[...document.querySelectorAll('#tb input')];const i=ins.indexOf(el);(KEYNAV&&ins[i+1]?ins[i+1]:el).focus({preventScroll:true})}KEYNAV=false;});
 let KEYNAV=false;$('tb').addEventListener('keydown',e=>{if(e.key==='Tab'&&!e.shiftKey&&e.target.matches('input'))KEYNAV=true});
-$('btnCopy').onclick=async()=>{const lines=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV','Saisi par'].join('\t')].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):'',x.by].join('\t')));const txt=lines.join('\n');
+$('btnCopy').onclick=async()=>{const lines=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV','Début CRA','Saisi par'].join('\t')].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):'',x.craIn?fr(fromIso(x.craIn)):'',x.by].join('\t')));const txt=lines.join('\n');
   try{await navigator.clipboard.writeText(txt);showMsg('info',`${LAST.length} lignes copiées. Collez-les dans Excel (Ctrl + V).`)}catch(e){$('bk').value=txt;$('bk').select();showMsg('info','Copie automatique refusée : la liste est dans la zone de texte « Sauvegarder ou restaurer », sélectionnée. Faites Ctrl + C.')}};
 window.ayaanPinMsg=t=>showMsg('info',t);
 const markBk=()=>store.set(K_BK,iso(today()));
@@ -625,7 +647,7 @@ let armed=false;$('btnClear').onclick=()=>{if(!AY.can('effacer'))return;if(!arme
 
 function dl(name,text,type){const b=new Blob([text],{type});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 if(OFFLINE){['btnDl','btnBkDl','btnBkUp'].forEach(id=>$(id).hidden=false);$('offTag').textContent=' Version hors ligne : fonctionne sans Internet.'}
-$('btnDl').onclick=()=>{const rows=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV','Saisi par']].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):'',x.by]));
+$('btnDl').onclick=()=>{const rows=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV','Début CRA','Saisi par']].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):'',x.craIn?fr(fromIso(x.craIn)):'',x.by]));
   const csv='\uFEFF'+rows.map(r=>r.map(v=>{v=String(v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
   const ess=$('selEss').value||'toutes ESS';dl(`Ayaan Suivi CV - ${ess} - ${iso(today())}.csv`,csv,'text/csv;charset=utf-8');showMsg('info',`${LAST.length} lignes téléchargées (fichier CSV, s'ouvre dans Excel).`)};
 $('btnBkDl').onclick=()=>{markBk();dl(`Ayaan Suivi CV - sauvegarde - ${iso(today())}.json`,JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN}),'application/json');$('bkmsg').textContent=`Sauvegarde enregistrée (${Object.keys(SAIS).length} saisies) dans le dossier Téléchargements.`};
@@ -660,7 +682,7 @@ function buildReport(){
     const late=r.filter(x=>x.stat==='En retard').sort((a,b)=>(b.ret||0)-(a.ret||0));
     return{ess:e,actifs:act.length,iit:r.filter(x=>x.act.startsWith('Non : IIT')).length,late:late.length,todo:r.filter(x=>x.stat==='À prélever ce mois').length,
       doneMonth:r.filter(x=>doneP(cur,x)).length,attMonth:r.filter(x=>inP(cur,x)).length,manual:r.filter(x=>x.src==='Saisie manuelle'||x.src==='Export corrigé').length,
-      cvAJour:act.filter(x=>x.lastD&&x.lastD>=addM(ref,-12)).length,months,...(()=>{const q=supp(r,ref);return{pvlsD:q.d,pvlsN:q.n,und:q.u,low:q.low,cra:q.cra,pend:r.filter(x=>x.act==='Oui'&&x.pend).length,tatMed:tat(r,ref).med}})(),
+      cvAJour:act.filter(x=>x.lastD&&x.lastD>=addM(ref,-12)).length,months,...(()=>{const q=supp(r,ref);return{pvlsD:q.d,pvlsN:q.n,und:q.u,low:q.low,cra:q.cra,pend:r.filter(x=>x.act==='Oui'&&x.pend).length,craTodo:r.filter(x=>x.craTodo).length,tatMed:tat(r,ref).med}})(),
       lateList:late.slice(0,300).map(x=>({dos:x.dos,due:iso(x.due),ret:x.ret,rdv:x.rdv||''}))}});
   return{type:'ayaan-rapport',v:1,gen:new Date().toISOString(),ref:iso(ref),fy:iso(fy),file:DATA&&DATA.file||'',example:!!(DATA&&DATA.example&&!Object.keys(MAN).length),sites};
 }
@@ -677,7 +699,36 @@ $('u_reset').onclick=()=>{usrReset();$('u_msg').textContent=''};
 let uDel=null;$('tbUsr').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   if(b.dataset.ue){const u=AY.list().find(x=>x.id===b.dataset.ue);$('u_id').value=u.id;$('u_nom').value=u.nom;$('u_role').value=u.role;$('u_pin').value='';$('u_pinLab').textContent='Nouveau code PIN (vide = inchangé)';$('u_save').textContent='Enregistrer';$('u_nom').focus();return}
   if(b.dataset.ud){if(uDel!==b.dataset.ud){uDel=b.dataset.ud;b.textContent='Confirmer';return}const err=AY.del(b.dataset.ud);uDel=null;$('u_msg').textContent=err||'Utilisateur supprimé.';renderUsr()}});
-document.addEventListener('ayaan-user',()=>{statusFilter=statusFilter;renderUsr();render()});
+// ----- résumé du jour, notifications, partage
+let DSTXT='';
+function daySummary(){
+  if(!DATA)return null;const ref=today();const fy=fromIso($('dFy').value)||defaultFy(ref);const ps=periods(fy);const cur=ps.find(p=>p.type==='m'&&ref>=p.s&&ref<=p.e)||ps[0];
+  const essSel=$('selEss').value;let all=compute(ref,fy,cur);if(essSel)all=all.filter(x=>x.ess===essSel);
+  const n={today:all.filter(x=>x.todayF).length,cra:all.filter(x=>x.craTodo).length,late:all.filter(x=>x.stat==='En retard').length,month:all.filter(x=>x.stat==='À prélever ce mois').length,pend:all.filter(x=>x.act==='Oui'&&x.pend).length};
+  const lieu=essSel||([...new Set(all.map(x=>x.ess))].length===1?all[0].ess:'toutes les ESS');
+  const pl=(v,a,b)=>v+' '+(v>1?b:a);
+  DSTXT=`Ayaan · ${lieu} · ${fr(ref)}\n• ${pl(n.today,'patient','patients')} à prélever aujourd'hui\n• ${pl(n.cra,'patient','patients')} à commencer le CRA (CV ≥ 1 000)\n• ${pl(n.late,'patient','patients')} en retard de prélèvement\n• ${n.month} à prélever ce mois · ${pl(n.pend,'résultat','résultats')} en attente`;
+  return{n,lieu,ref};
+}
+function setBadge(v){try{if('setAppBadge' in navigator){v?navigator.setAppBadge(v):navigator.clearAppBadge()}}catch(e){}}
+function notifyDay(d){try{if(!('Notification' in window)||Notification.permission!=='granted'||!navigator.serviceWorker)return;const k='ayaan.notif.last',dd=iso(today());if(localStorage.getItem(k)===dd)return;
+  navigator.serviceWorker.ready.then(r=>r.showNotification('Ayaan · aujourd\'hui',{body:`${d.n.today} à prélever aujourd'hui · ${d.n.cra} CRA à commencer · ${d.n.late} en retard`,icon:'icon-192.png',badge:'icon-192.png',tag:'ayaan-jour'})).then(()=>localStorage.setItem(k,dd)).catch(()=>{})}catch(e){}}
+function showDay(){const d=daySummary();if(!d)return;
+  $('dsSub').textContent=`${d.lieu} · ${fr(d.ref)}${DATA.example&&!Object.keys(MAN).length?' · données d\'exemple':''}`;
+  const L=[['Aujourd\'hui',d.n.today,'patient(s) à prélever aujourd\'hui (date prévue ou RDV ARV aujourd\'hui)','var(--warn)'],['CRA à commencer',d.n.cra,'patient(s) à commencer le CRA (CV ≥ 1 000)','var(--bad)'],['En retard',d.n.late,'patient(s) en retard de prélèvement : tracking actif','var(--bad)'],['À prélever ce mois',d.n.month,'à prélever ce mois','var(--violet)'],['Résultat en attente',d.n.pend,'résultat(s) en attente','var(--bleu)']];
+  $('dsList').innerHTML=L.map(l=>`<button type="button" class="it" data-f="${esc(l[0])}"><b style="color:${l[3]}">${l[1]}</b><span>${esc(l[2])}</span></button>`).join('');
+  $('dsShare').hidden=!navigator.share;$('dsNotif').hidden=!('Notification' in window)||Notification.permission!=='default';
+  $('daySum').hidden=false;setBadge(d.n.late+d.n.cra);notifyDay(d);setTimeout(()=>$('dsClose').focus(),30)}
+$('btnDay').onclick=showDay;
+$('dsClose').onclick=()=>{$('daySum').hidden=true};
+$('daySum').addEventListener('click',e=>{if(e.target.id==='daySum'){$('daySum').hidden=true;return}const b=e.target.closest('.it');if(!b)return;statusFilter=b.dataset.f;EDITED.clear();page=0;$('daySum').hidden=true;render();$('listTitle').scrollIntoView({behavior:'smooth'})});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('daySum').hidden)$('daySum').hidden=true});
+$('dsWa').onclick=()=>window.open('https://wa.me/?text='+encodeURIComponent(DSTXT),'_blank');
+$('dsSms').onclick=()=>{location.href='sms:?&body='+encodeURIComponent(DSTXT)};
+$('dsShare').onclick=()=>{navigator.share({text:DSTXT}).catch(()=>{})};
+$('dsCopy').onclick=async()=>{try{await navigator.clipboard.writeText(DSTXT);$('dsCopy').textContent='Copié'}catch(e){$('bk').value=DSTXT;$('dsCopy').textContent='Dans la zone de sauvegarde'}setTimeout(()=>$('dsCopy').textContent='Copier',2000)};
+$('dsNotif').onclick=()=>{Notification.requestPermission().then(p=>{$('dsNotif').hidden=true;if(p==='granted'){try{localStorage.removeItem('ayaan.notif.last')}catch(e){}const d=daySummary();d&&notifyDay(d)}})};
+document.addEventListener('ayaan-user',()=>{renderUsr();render();if(!DATA.example||Object.keys(MAN).length)showDay()});
 // init
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 if('serviceWorker' in navigator&&navigator.serviceWorker.controller){navigator.serviceWorker.addEventListener('controllerchange',()=>{if(window.__ayRel)return;window.__ayRel=1;showMsg('info','Nouvelle version d\'Ayaan installée. <button class="btn" type="button" onclick="location.reload()">Recharger</button> (vos données sont conservées).')})}
