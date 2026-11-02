@@ -171,12 +171,12 @@ textarea{min-height:90px;font-family:var(--f-num);font-size:12px}
    de choisir un nouveau PIN sans perdre les données. */
 (function(){
 const K='ayaan.users.v1',KOLD='ayaan.pin.v1',IDLE=10*60*1000,AWAY=5*60*1000;
-const ROLES={admin:'Administrateur',gest:'Gestionnaire de données',prest:'Prestataire CV',sup:'Superviseur (lecture)'};
+const ROLES={admin:'Administrateur',gest:'Gestionnaire de données',prest:'Prestataire CV',sup:'Superviseur de site'};
 const PERMS={
   admin:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde','restaurer','effacer','utilisateurs','central','c_importer'],
   gest:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde'],
-  prest:['voir','saisir','exporter','importer','manuel'],
-  sup:['voir','exporter']};
+  prest:['voir','saisir','exporter','importer','manuel','rapport'],
+  sup:['voir','saisir','exporter','importer','manuel','rapport']};
 const ACTIONS=[['Ayaan Suivi CV',[['Voir les listes, les tuiles et les tableaux','voir'],['Saisir prélèvement, résultat CV, date de retour, début du CRA, commentaire','saisir'],['Copier ou télécharger la liste (Excel)','exporter'],['Importer l\'export Tier.Net','importer'],['Saisie manuelle d\'un patient (ajouter, modifier, supprimer)','manuel'],['Envoyer le rapport au centralisateur','rapport'],['Copier ou enregistrer la sauvegarde','sauvegarde'],['Restaurer une sauvegarde','restaurer'],['Effacer les données de l\'appareil','effacer'],['Gérer les utilisateurs et les PIN','utilisateurs']]],
  ['Centralisateur',[['Ouvrir le centralisateur et l\'utiliser (tableau de bord, import des rapports, sauvegardes)','central']]],
  ['Compte personnel',[['Changer son propre code PIN','*'],['Verrouiller l\'application','*'],['Voir ses droits (« Mes droits »)','*']]]];
@@ -386,7 +386,7 @@ window.ayaanLock=AY.lock;$('ayRC').onclick=()=>{$('ayRights').hidden=true};$('ay
     <form id="usrForm" class="controls" style="border:0;padding:0" autocomplete="off">
       <input type="hidden" id="u_id">
       <label class="f" for="u_nom">Nom *<input type="text" id="u_nom" maxlength="40" required></label>
-      <label class="f" for="u_role">Rôle *<select id="u_role"><option value="prest">Prestataire CV</option><option value="gest">Gestionnaire de données</option><option value="sup">Superviseur (lecture)</option><option value="admin">Administrateur</option></select></label>
+      <label class="f" for="u_role">Rôle *<select id="u_role"><option value="prest">Prestataire CV</option><option value="gest">Gestionnaire de données</option><option value="sup">Superviseur de site</option><option value="admin">Administrateur</option></select></label>
       <label class="f" for="u_pin"><span id="u_pinLab">Code PIN de départ *</span><input type="password" id="u_pin" inputmode="numeric" maxlength="6" autocomplete="new-password"></label>
       <div class="row" style="align-self:end"><button class="btn" type="submit" id="u_save">Ajouter l'utilisateur</button><button class="btn ghost" type="button" id="u_reset">Annuler</button></div>
     </form>
@@ -705,7 +705,7 @@ function buildReport(){
       doneMonth:r.filter(x=>doneP(cur,x)).length,attMonth:r.filter(x=>inP(cur,x)).length,manual:r.filter(x=>x.src==='Saisie manuelle'||x.src==='Export corrigé').length,
       cvAJour:act.filter(x=>x.lastD&&x.lastD>=addM(ref,-12)).length,months,...(()=>{const q=supp(r,ref);return{pvlsD:q.d,pvlsN:q.n,und:q.u,low:q.low,cra:q.cra,pend:r.filter(x=>x.act==='Oui'&&x.pend).length,craTodo:r.filter(x=>x.craTodo).length,tatMed:tat(r,ref).med}})(),
       lateList:late.slice(0,300).map(x=>({dos:x.dos,due:iso(x.due),ret:x.ret,rdv:x.rdv||''}))}});
-  return{type:'ayaan-rapport',v:1,gen:new Date().toISOString(),ref:iso(ref),fy:iso(fy),file:DATA&&DATA.file||'',example:!!(DATA&&DATA.example&&!Object.keys(MAN).length),sites};
+  return{type:'ayaan-rapport',v:1,gen:new Date().toISOString(),by:(u=>u?{nom:u.nom,role:u.roleLab}:null)(AY.user()),ref:iso(ref),fy:iso(fy),file:DATA&&DATA.file||'',example:!!(DATA&&DATA.example&&!Object.keys(MAN).length),sites};
 }
 $('btnRep').onclick=async()=>{if(!AY.can('rapport'))return;const r=buildReport();if(r.example){showMsg('bad','Importez d\'abord l\'export Tier.Net du site : le rapport ne peut pas contenir les données d\'exemple.');return}
   const txt=JSON.stringify(r);const name=`Ayaan rapport - ${r.sites.length===1?r.sites[0].ess:r.sites.length+' ESS'} - ${r.ref}.json`;
