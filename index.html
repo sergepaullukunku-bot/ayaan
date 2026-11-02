@@ -124,20 +124,24 @@ textarea{min-height:90px;font-family:var(--f-num);font-size:12px}
 </head>
 <body>
 <style>
-#pinLock{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:linear-gradient(135deg,#3d2fa0,#1d1554);color:#fff;padding:16px}
+#pinLock{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:linear-gradient(135deg,#3d2fa0,#1d1554);color:#fff;padding:16px;overflow:auto}
 #pinLock[hidden]{display:none!important}
-#pinLock .pb{width:min(360px,100%);display:grid;gap:12px;text-align:center}
+#pinLock .pb{width:min(380px,100%);display:grid;gap:12px;text-align:center}
 #pinLock h2{margin:0;font-size:22px}
 #pinLock p{margin:0;font-size:14px;opacity:.9}
-#pinLock input{font:inherit;font-size:28px;letter-spacing:.5em;text-align:center;padding:10px;border-radius:10px;border:2px solid #f2c400;background:#fff;color:#1f1b33;width:100%}
+#pinLock input{font:inherit;font-size:26px;letter-spacing:.4em;text-align:center;padding:10px;border-radius:10px;border:2px solid #f2c400;background:#fff;color:#1f1b33;width:100%}
+#pinLock input#pinName{font-size:18px;letter-spacing:0}
 #pinLock button{font:inherit;font-weight:700;font-size:16px;border-radius:10px;border:0;padding:12px;background:#f2c400;color:#1f1b33;cursor:pointer}
 #pinLock button.lnk{background:transparent;color:#fff;text-decoration:underline;font-weight:500;font-size:14px;padding:4px}
 #pinLock .err{color:#ffb4a8;font-weight:700;min-height:1.2em}
 #pinLock .code{font-family:ui-monospace,Menlo,monospace;font-size:26px;letter-spacing:.15em;background:#fff;color:#342787;border-radius:10px;padding:10px}
+.who{font-size:12px;color:var(--muted);font-weight:600}
+.who b{color:var(--violet)}
 </style>
 <div id="pinLock" hidden role="dialog" aria-modal="true" aria-labelledby="pinT"><div class="pb">
   <h2 id="pinT">Ayaan</h2><p id="pinP"></p>
   <div id="pinCodeBox" class="code" hidden></div>
+  <input id="pinName" type="text" autocomplete="off" maxlength="40" placeholder="Votre nom" aria-label="Votre nom" hidden>
   <input id="pinIn" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Code PIN">
   <input id="pinIn2" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Confirmer le code PIN" hidden>
   <div class="err" id="pinErr" aria-live="assertive"></div>
@@ -145,60 +149,100 @@ textarea{min-height:90px;font-family:var(--f-num);font-size:12px}
   <button type="button" class="lnk" id="pinForgot">Code PIN oublié ?</button>
 </div></div>
 <script>
-/* Ayaan : verrouillage par code PIN (4 à 6 chiffres). Le PIN n'est jamais stocké en clair.
-   Un code de secours, affiché une seule fois à la création, permet de choisir un nouveau PIN sans perdre les données. */
+/* Ayaan : utilisateurs, rôles et code PIN. Les PIN ne sont jamais stockés en clair (empreinte salée).
+   Matrice d'accès : voir ROLES et PERMS ci-dessous (identique au fichier « Matrice d'accès Ayaan.xlsx »).
+   Le code de secours (affiché une fois à la création du premier administrateur) permet à un administrateur
+   de choisir un nouveau PIN sans perdre les données. */
 (function(){
-const K='ayaan.pin.v1',IDLE=10*60*1000,AWAY=5*60*1000;
+const K='ayaan.users.v1',KOLD='ayaan.pin.v1',IDLE=10*60*1000,AWAY=5*60*1000;
+const ROLES={admin:'Administrateur',gest:'Gestionnaire de données',prest:'Prestataire CV',sup:'Superviseur (lecture)'};
+const PERMS={
+  admin:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde','restaurer','effacer','utilisateurs','c_importer'],
+  gest:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde','c_importer'],
+  prest:['voir','saisir','exporter'],
+  sup:['voir','exporter']};
 const $=id=>document.getElementById(id);
-const get=()=>{try{return JSON.parse(localStorage.getItem(K)||'null')}catch(e){return null}};
-const set=v=>{try{localStorage.setItem(K,JSON.stringify(v));return true}catch(e){return false}};
+const rd=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};
+const wr=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
+const ss={get(k){try{return sessionStorage.getItem(k)}catch(e){return null}},set(k,v){try{sessionStorage.setItem(k,v)}catch(e){}}};
 const rnd=n=>{const a=new Uint8Array(n);crypto.getRandomValues(a);return [...a].map(b=>b.toString(16).padStart(2,'0')).join('')};
 async function h(salt,txt){const d=new TextEncoder().encode(salt+'|'+txt);
   if(crypto.subtle){let b=await crypto.subtle.digest('SHA-256',d);for(let i=0;i<999;i++)b=await crypto.subtle.digest('SHA-256',new Uint8Array([...new Uint8Array(b),...d]));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
   let x=5381;for(let r=0;r<2000;r++)for(const c of d)x=((x*33)^c^r)>>>0;return 'f'+x.toString(16)}
 const recCode=()=>{const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789';const a=new Uint8Array(8);crypto.getRandomValues(a);const s=[...a].map(b=>A[b%A.length]).join('');return s.slice(0,4)+'-'+s.slice(4)};
-let mode='',fails=0,waitUntil=0,last=Date.now(),hiddenAt=0,newPin='';
-const L=$('pinLock'),I=$('pinIn'),I2=$('pinIn2'),E=$('pinErr'),P=$('pinP'),OK=$('pinOk'),F=$('pinForgot'),CB=$('pinCodeBox');
-function show(m){mode=m;L.hidden=false;E.textContent='';I.value='';I2.value='';I.hidden=false;I2.hidden=true;CB.hidden=true;F.hidden=m!=='unlock';OK.textContent='Valider';
-  I.setAttribute('aria-label','Code PIN');
-  if(m==='unlock'){P.textContent='Entrez votre code PIN pour ouvrir l\'application.'}
-  else if(m==='create'){P.textContent='Protégez les données des patients : choisissez un code PIN de 4 à 6 chiffres, puis confirmez-le.';I2.hidden=false}
-  else if(m==='recover'){P.textContent='Entrez le code de secours noté lors de la création du PIN (ex. ABCD-1234).';I.removeAttribute('inputmode');I.type='text';I.maxLength=9;I.setAttribute('aria-label','Code de secours')}
-  if(m!=='recover'){I.type='password';I.maxLength=6;I.setAttribute('inputmode','numeric')}
-  setTimeout(()=>I.focus(),50)}
-function hide(){L.hidden=true;mode='';last=Date.now();try{sessionStorage.setItem('ayaan.unl',String(last))}catch(e){}}
+// migration de la v7 (un seul PIN) : il devient le PIN de l'administrateur
+let DB=rd(K);
+if(!DB){const o=rd(KOLD);if(o&&o.h){DB={rs:o.rs,rh:o.rh,users:[{id:rnd(6),nom:'Administrateur',role:'admin',s:o.s,h:o.h,cree:new Date().toISOString().slice(0,10)}]};wr(K,DB)}}
+const save=()=>wr(K,DB);
+const hasUsers=()=>!!(DB&&DB.users&&DB.users.length);
+let CUR=null;
+function badPin(a){if(!/^\d{4,6}$/.test(a))return 'Le code PIN doit contenir 4 à 6 chiffres.';if(/^(\d)\1+$/.test(a)||'0123456789'.includes(a)||'9876543210'.includes(a))return 'Code trop facile à deviner (ex. 0000, 1234) : choisissez-en un autre.';return ''}
+async function findByPin(pin,exceptId){for(const u of (DB&&DB.users)||[]){if(u.id!==exceptId&&await h(u.s,pin)===u.h)return u}return null}
+function login(u){CUR=u;ss.set('ayaan.cur',u.id);ss.set('ayaan.unl',String(Date.now()));paint();document.dispatchEvent(new CustomEvent('ayaan-user',{detail:pub()}))}
+const pub=()=>CUR?{id:CUR.id,nom:CUR.nom,role:CUR.role,roleLab:ROLES[CUR.role]}:null;
+function paint(){document.querySelectorAll('[data-who]').forEach(el=>{el.innerHTML=CUR?`Connecté : <b>${CUR.nom.replace(/[&<>"]/g,'')}</b> · ${ROLES[CUR.role]}`:''});
+  document.querySelectorAll('[data-perm]').forEach(el=>{const ok=can(el.dataset.perm);if(el.tagName==='SELECT'||el.tagName==='INPUT'||el.tagName==='TEXTAREA')el.disabled=!ok;else el.hidden=!ok})}
+function can(p){return !!(CUR&&(PERMS[CUR.role]||[]).includes(p))}
+// ----- écran de verrouillage
+let mode='',fails=0,waitUntil=0,last=Date.now(),hiddenAt=0,target=null;
+const L=$('pinLock'),N=$('pinName'),I=$('pinIn'),I2=$('pinIn2'),E=$('pinErr'),P=$('pinP'),OK=$('pinOk'),F=$('pinForgot'),CB=$('pinCodeBox');
+function show(m){mode=m;L.hidden=false;E.textContent='';I.value='';I2.value='';N.value='';N.hidden=true;I.hidden=false;I2.hidden=true;CB.hidden=true;F.hidden=m!=='unlock';OK.textContent='Valider';
+  I.type='password';I.maxLength=6;I.setAttribute('inputmode','numeric');I.setAttribute('aria-label','Code PIN');
+  if(m==='unlock')P.textContent='Entrez votre code PIN pour ouvrir l\'application.';
+  else if(m==='first'){P.textContent='Première utilisation : créez le compte administrateur de cet appareil. Saisissez votre nom, puis un code PIN de 4 à 6 chiffres et confirmez-le.';N.hidden=false;I2.hidden=false}
+  else if(m==='newpin'){P.textContent='Choisissez votre nouveau code PIN, puis confirmez-le.';I2.hidden=false}
+  else if(m==='recover'){P.textContent='Administrateur : entrez le code de secours noté à la création (ex. ABCD-1234). Les autres utilisateurs demandent à l\'administrateur de réinitialiser leur PIN.';I.removeAttribute('inputmode');I.type='text';I.maxLength=9;I.setAttribute('aria-label','Code de secours')}
+  setTimeout(()=>(N.hidden?I:N).focus(),50)}
+function hide(){L.hidden=true;mode='';last=Date.now()}
 async function submit(){
-  const cfg=get();
-  if(mode==='unlock'){
+  if(mode==='unlock'||mode==='change'){
     if(Date.now()<waitUntil){E.textContent='Trop d\'essais : patientez '+Math.ceil((waitUntil-Date.now())/1000)+' s.';return}
-    if(cfg&&await h(cfg.s,I.value)===cfg.h){fails=0;hide()}else{fails++;I.value='';E.textContent='Code PIN incorrect.';if(fails>=5){waitUntil=Date.now()+30000;fails=0;E.textContent='5 essais incorrects : patientez 30 s.'}}
-  }else if(mode==='create'){
-    const a=I.value.trim(),b=I2.value.trim();
-    if(!/^\d{4,6}$/.test(a)){E.textContent='Le code PIN doit contenir 4 à 6 chiffres.';return}
-    if(/^(\d)\1+$/.test(a)||'0123456789'.includes(a)||'9876543210'.includes(a)){E.textContent='Code trop facile à deviner (ex. 0000, 1234) : choisissez-en un autre.';return}
+    const u=mode==='change'?((CUR&&await h(CUR.s,I.value)===CUR.h)?CUR:null):await findByPin(I.value);
+    if(!u){fails++;I.value='';E.textContent='Code PIN incorrect.';if(fails>=5){waitUntil=Date.now()+30000;fails=0;E.textContent='5 essais incorrects : patientez 30 s.'}return}
+    fails=0;if(mode==='change'){target=u;show('newpin');return}login(u);hide();return}
+  if(mode==='first'||mode==='newpin'){
+    const nm=N.value.trim(),a=I.value.trim(),b=I2.value.trim();
+    if(mode==='first'&&nm.length<2){E.textContent='Saisissez votre nom.';return}
+    const bp=badPin(a);if(bp){E.textContent=bp;return}
     if(a!==b){E.textContent='Les deux codes ne sont pas identiques.';I2.value='';return}
-    newPin=a;const keep=cfg&&cfg.rh?cfg:null;const s=rnd(16);
-    if(keep){set({s,h:await h(s,a),rs:keep.rs,rh:keep.rh});hide();if(window.ayaanPinMsg)window.ayaanPinMsg('Nouveau code PIN enregistré.');return}
-    const rc=recCode(),rs=rnd(16);set({s,h:await h(s,a),rs,rh:await h(rs,rc)});
-    mode='showcode';P.textContent='Code PIN enregistré. Notez ce code de secours sur papier et gardez-le en lieu sûr : il permet de choisir un nouveau PIN si vous oubliez le vôtre, sans perdre les données.';
-    CB.textContent=rc;CB.hidden=false;I.hidden=true;I2.hidden=true;E.textContent='';OK.textContent='J\'ai noté le code de secours';F.hidden=true;OK.focus();
-  }else if(mode==='showcode'){hide()}
-  else if(mode==='change'){if(cfg&&await h(cfg.s,I.value)===cfg.h){show('create');P.textContent='Choisissez le nouveau code PIN, puis confirmez-le.'}else{E.textContent='Code PIN incorrect.';I.value=''}}
-  else if(mode==='recover'){
+    if(await findByPin(a,target&&target.id)){E.textContent='Ce code PIN est déjà utilisé par un autre utilisateur : choisissez-en un autre.';return}
+    const s=rnd(16),hh=await h(s,a);
+    if(mode==='newpin'){target.s=s;target.h=hh;save();const u=target;target=null;login(u);hide();if(window.ayaanPinMsg)window.ayaanPinMsg('Nouveau code PIN enregistré.');return}
+    const rc=recCode(),rs=rnd(16);DB={rs,rh:await h(rs,rc),users:[{id:rnd(6),nom:nm,role:'admin',s,h:hh,cree:new Date().toISOString().slice(0,10)}]};save();
+    login(DB.users[0]);mode='showcode';P.textContent='Compte administrateur créé. Notez ce code de secours sur papier et gardez-le en lieu sûr : il permet à l\'administrateur de choisir un nouveau PIN s\'il l\'oublie, sans perdre les données.';
+    CB.textContent=rc;CB.hidden=false;N.hidden=true;I.hidden=true;I2.hidden=true;E.textContent='';OK.textContent='J\'ai noté le code de secours';F.hidden=true;OK.focus();return}
+  if(mode==='showcode'){hide();return}
+  if(mode==='recover'){
     const v=I.value.trim().toUpperCase().replace(/\s/g,'');const vv=v.includes('-')?v:v.slice(0,4)+'-'+v.slice(4);
-    if(cfg&&await h(cfg.rs,vv)===cfg.rh){show('create');P.textContent='Code de secours accepté. Choisissez un nouveau code PIN, puis confirmez-le.'}else{E.textContent='Code de secours incorrect.'}
-  }
+    if(DB&&await h(DB.rs,vv)===DB.rh){target=DB.users.find(u=>u.role==='admin');show('newpin');P.textContent=`Code de secours accepté. Choisissez un nouveau code PIN pour ${target.nom} (administrateur), puis confirmez-le.`}else E.textContent='Code de secours incorrect.'}
 }
 OK.onclick=submit;
-[I,I2].forEach(x=>x.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(x===I&&!I2.hidden&&!I2.value)I2.focus();else submit()}}));
+[N,I,I2].forEach(x=>x.addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();if(x===N)I.focus();else if(x===I&&!I2.hidden&&!I2.value)I2.focus();else submit()}));
 F.onclick=()=>show('recover');
-window.ayaanChangePin=()=>{if(!get())return show('create');show('unlock');mode='change';F.hidden=true;P.textContent='Entrez votre code PIN actuel.'};
-window.ayaanLock=()=>{if(get())show('unlock')};
 ['pointerdown','keydown','scroll','touchstart'].forEach(ev=>addEventListener(ev,()=>{last=Date.now()},{passive:true,capture:true}));
-setInterval(()=>{if(!mode&&get()&&Date.now()-last>IDLE)show('unlock')},15000);
-document.addEventListener('visibilitychange',()=>{if(document.hidden)hiddenAt=Date.now();else if(!mode&&get()&&hiddenAt&&Date.now()-hiddenAt>AWAY)show('unlock')});
-addEventListener('pagehide',()=>{try{if(!mode)sessionStorage.setItem('ayaan.unl',String(last))}catch(e){}});
-(function(){let u=0;try{u=+sessionStorage.getItem('ayaan.unl')||0}catch(e){}if(get()&&u&&Date.now()-u<IDLE)return;show(get()?'unlock':'create')})();
+setInterval(()=>{if(!mode&&hasUsers()&&Date.now()-last>IDLE)show('unlock')},15000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)hiddenAt=Date.now();else if(!mode&&hasUsers()&&hiddenAt&&Date.now()-hiddenAt>AWAY)show('unlock')});
+addEventListener('pagehide',()=>{if(!mode)ss.set('ayaan.unl',String(last))});
+// ----- API pour les pages
+const AY=window.AY={ROLES,PERMS,can,user:pub,
+  lock(){if(hasUsers())show('unlock')},
+  changePin(){if(!CUR)return;show('unlock');mode='change';F.hidden=true;P.textContent='Entrez votre code PIN actuel.'},
+  list(){return (DB&&DB.users||[]).map(u=>({id:u.id,nom:u.nom,role:u.role,roleLab:ROLES[u.role],cree:u.cree}))},
+  async save(id,nom,role,pin){if(!can('utilisateurs'))return 'Action réservée à l\'administrateur.';nom=String(nom||'').trim();if(nom.length<2)return 'Saisissez le nom de l\'utilisateur.';if(!ROLES[role])return 'Choisissez un rôle.';
+    const u=id?DB.users.find(x=>x.id===id):null;if(id&&!u)return 'Utilisateur introuvable.';
+    if(u&&u.role==='admin'&&role!=='admin'&&DB.users.filter(x=>x.role==='admin').length<2)return 'Il faut garder au moins un administrateur.';
+    if(!u||pin){const bp=badPin(pin||'');if(bp)return bp;if(await findByPin(pin,u&&u.id))return 'Ce code PIN est déjà utilisé par un autre utilisateur.'}
+    if(DB.users.some(x=>x.id!==id&&x.nom.toLowerCase()===nom.toLowerCase()))return 'Un utilisateur porte déjà ce nom.';
+    const t=u||{id:rnd(6),cree:new Date().toISOString().slice(0,10)};t.nom=nom;t.role=role;if(pin){t.s=rnd(16);t.h=await h(t.s,pin)}if(!u)DB.users.push(t);save();if(CUR&&CUR.id===t.id)login(t);else paint();return ''},
+  del(id){if(!can('utilisateurs'))return 'Action réservée à l\'administrateur.';const u=DB.users.find(x=>x.id===id);if(!u)return 'Utilisateur introuvable.';if(CUR&&CUR.id===id)return 'Vous ne pouvez pas supprimer votre propre compte.';
+    if(u.role==='admin'&&DB.users.filter(x=>x.role==='admin').length<2)return 'Il faut garder au moins un administrateur.';DB.users=DB.users.filter(x=>x.id!==id);save();return ''}
+};
+window.ayaanLock=AY.lock;window.ayaanChangePin=AY.changePin;
+// ----- démarrage
+(function(){if(!hasUsers()){show('first');return}
+  const cid=ss.get('ayaan.cur'),u=+ss.get('ayaan.unl')||0,me=DB.users.find(x=>x.id===cid);
+  if(me&&u&&Date.now()-u<IDLE){CUR=me;document.addEventListener('DOMContentLoaded',()=>{paint();document.dispatchEvent(new CustomEvent('ayaan-user',{detail:pub()}))});if(document.readyState!=='loading')setTimeout(()=>{paint();document.dispatchEvent(new CustomEvent('ayaan-user',{detail:pub()}))},0);return}
+  show('unlock')})();
 })();
 </script>
 
@@ -227,13 +271,13 @@ addEventListener('pagehide',()=>{try{if(!mode)sessionStorage.setItem('ayaan.unl'
   <path d="M40 62 C48 60 50 80 60 82 C66 83.5 72 83 80 83" fill="none" stroke="#342787" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
   <circle cx="80.5" cy="83" r="6.5" fill="#f2c400" stroke="#342787" stroke-width="2.5"/>
 </svg><div class="brand">
-      <h1>Ayaan Suivi CV</h1>
+      <h1>Ayaan Suivi CV</h1><div class="who" data-who></div>
       <p>Patients actifs (définition MER), date probable du prochain prélèvement et attendus par mois et par trimestre, à partir de l'export Tier.Net. Les données restent sur cet appareil.<span id="offTag"></span></p>
     </div></div>
     <div class="row">
       <input type="file" id="file" accept=".xlsx,.csv" hidden>
-      <button class="btn ghost" type="button" onclick="ayaanLock()" title="Verrouiller l'application">Verrouiller</button><a class="btn ghost" href="central.html" style="text-decoration:none">Ouvrir le Centralisateur</a><button class="btn ghost" id="btnRep" type="button">Envoyer au centralisateur</button>
-      <button class="btn" id="btnImport">Importer l'export Tier.Net</button>
+      <button class="btn ghost" type="button" onclick="ayaanLock()" title="Verrouiller l'application">Verrouiller</button><a class="btn ghost" href="central.html" style="text-decoration:none">Ouvrir le Centralisateur</a><button class="btn ghost" id="btnRep" type="button" data-perm="rapport">Envoyer au centralisateur</button>
+      <button class="btn" id="btnImport" data-perm="importer">Importer l'export Tier.Net</button>
     </div>
   </header>
 
@@ -255,8 +299,8 @@ addEventListener('pagehide',()=>{try{if(!mode)sessionStorage.setItem('ayaan.unl'
     <div class="row" style="justify-content:space-between">
       <h2 id="listTitle">Patients</h2>
       <div class="row">
-        <button class="btn ghost" id="btnCopy">Copier la liste pour Excel</button>
-        <button class="btn ghost" id="btnDl" hidden>Télécharger la liste (Excel)</button>
+        <button class="btn ghost" id="btnCopy" data-perm="exporter">Copier la liste pour Excel</button>
+        <button class="btn ghost" id="btnDl" hidden data-perm="exporter">Télécharger la liste (Excel)</button>
       </div>
     </div>
     <div class="chips" id="chips" role="group" aria-label="Filtrer par statut"></div>
@@ -270,7 +314,7 @@ addEventListener('pagehide',()=>{try{if(!mode)sessionStorage.setItem('ayaan.unl'
       <h2 style="margin-top:8px">Par ESS (période choisie)</h2><div class="tw"><table><thead><tr><th>ESS</th><th class="num">Actifs</th><th class="num">Attendus</th><th class="num">Réalisés</th><th class="num">%</th></tr></thead><tbody id="tbE"></tbody></table></div></div>
   </section>
 
-  <section class="panel" id="manPanel">
+  <section class="panel" id="manPanel" data-perm="manuel">
     <h2>Saisie manuelle d'un patient</h2>
     <p class="muted">Pour un site sans export Tier.Net, ou quand l'export n'est pas à jour. Si le N° dossier existe déjà dans l'export pour cette ESS, les informations saisies ici remplacent celles de l'export. Champs obligatoires : ESS, N° dossier, date de début TARV.</p>
     <form id="manForm" class="controls" style="border:0;padding:0" autocomplete="off">
@@ -295,10 +339,23 @@ addEventListener('pagehide',()=>{try{if(!mode)sessionStorage.setItem('ayaan.unl'
     <p class="muted"><b>Actif (MER)</b> : date de référence ≤ date du prochain RDV + 28 jours ; décédés, transférés et patients sans date de début TARV exclus. <b>Date probable</b> : sans CV = début TARV + 6 mois ; CV faite dans les 12 premiers mois = début TARV + 12 mois ; ensuite dernière CV + 12 mois ; CV ≥ 1 000 copies = dernière CV + 3 mois. Une date antérieure au début de l'année fiscale devient ce premier jour : le patient reste attendu chaque mois jusqu'au prélèvement. <b>Réalisé</b> : nouvelle CV dans Tier.Net pendant la période (la date effective se remplit alors seule, marquée « auto · Tier.Net ») ou date saisie par l'IT si l'export n'est pas à jour. <b>Prochain RDV CV</b> : dès qu'un prélèvement est fait (Tier.Net ou saisi), la date du prélèvement suivant est calculée selon les mêmes règles (ex. patient sous ARV depuis 2017 prélevé le 06/10/2026 : prochain RDV CV le 06/10/2027) ; elle est à communiquer au patient. <b>En retard</b> : date probable dépassée sans prélèvement ; le patient est signalé automatiquement pour le tracking actif. Vert ≥ 95 %, jaune 85 à 94 %, rouge &lt; 85 %.</p>
     <p class="muted">Les dates saisies sont gardées par N° dossier : elles ne se décalent pas quand vous importez un nouvel export. Elles restent dans ce navigateur, sur cet appareil. Faites une sauvegarde régulière.</p>
     <details><summary>Sauvegarder ou restaurer les dates saisies</summary>
-      <div class="row" style="margin-top:8px"><button class="btn ghost" id="btnBack">Copier la sauvegarde</button><button class="btn ghost" id="btnRest">Restaurer depuis le texte collé</button><button class="btn ghost" id="btnBkDl" hidden>Enregistrer la sauvegarde (fichier)</button><input type="file" id="bkFile" accept=".json,.txt" hidden><button class="btn ghost" id="btnBkUp" hidden>Restaurer depuis un fichier</button><button class="btn ghost" id="btnClear">Effacer les données de cet appareil</button><button class="btn ghost" type="button" onclick="ayaanChangePin()">Changer le code PIN</button></div>
+      <div class="row" style="margin-top:8px"><button class="btn ghost" id="btnBack" data-perm="sauvegarde">Copier la sauvegarde</button><button class="btn ghost" id="btnRest" data-perm="restaurer">Restaurer depuis le texte collé</button><button class="btn ghost" id="btnBkDl" hidden data-perm="sauvegarde">Enregistrer la sauvegarde (fichier)</button><input type="file" id="bkFile" accept=".json,.txt" hidden><button class="btn ghost" id="btnBkUp" hidden data-perm="restaurer">Restaurer depuis un fichier</button><button class="btn ghost" id="btnClear" data-perm="effacer">Effacer les données de cet appareil</button><button class="btn ghost" type="button" onclick="ayaanChangePin()">Changer le code PIN</button></div>
       <label class="f" for="bk" style="margin-top:8px">Texte de sauvegarde (collez-le dans un courriel ou un fichier texte pour le garder)<textarea id="bk"></textarea></label>
       <div id="bkmsg" class="muted"></div>
     </details>
+  </section>
+  <section class="panel" id="usrPanel" data-perm="utilisateurs" hidden>
+    <h2>Utilisateurs de cet appareil</h2>
+    <p class="muted">Chaque personne a son propre code PIN ; son rôle décide de ce qu'elle peut faire (voir la matrice d'accès). Réservé à l'administrateur.</p>
+    <form id="usrForm" class="controls" style="border:0;padding:0" autocomplete="off">
+      <input type="hidden" id="u_id">
+      <label class="f" for="u_nom">Nom *<input type="text" id="u_nom" maxlength="40" required></label>
+      <label class="f" for="u_role">Rôle *<select id="u_role"><option value="prest">Prestataire CV</option><option value="gest">Gestionnaire de données</option><option value="sup">Superviseur (lecture)</option><option value="admin">Administrateur</option></select></label>
+      <label class="f" for="u_pin"><span id="u_pinLab">Code PIN de départ *</span><input type="password" id="u_pin" inputmode="numeric" maxlength="6" autocomplete="new-password"></label>
+      <div class="row" style="align-self:end"><button class="btn" type="submit" id="u_save">Ajouter l'utilisateur</button><button class="btn ghost" type="button" id="u_reset">Annuler</button></div>
+    </form>
+    <div id="u_msg" class="muted"></div>
+    <div class="tw"><table><thead><tr><th>Nom</th><th>Rôle</th><th>Créé le</th><th></th></tr></thead><tbody id="tbUsr"></tbody></table></div>
   </section>
 </div>
 
@@ -456,7 +513,7 @@ function compute(ref,fy,per){
         if(stat!=='À venir')ret=Math.max(0,Math.round((ref-due)/DAY));
       }
     }else stat='Non actif';
-    return {...r,key,act,prob,due,nextRdv,stat,ret,last,lastD,cvd,deb,sd,eff,effSrc,com:s.c||'',res,resD,resRet,resSrc,pend,rIn:s.r||'',rdIn:s.rd||''};
+    return {...r,key,act,prob,due,nextRdv,stat,ret,last,lastD,cvd,deb,sd,eff,effSrc,com:s.c||'',res,resD,resRet,resSrc,pend,rIn:s.r||'',rdIn:s.rd||'',by:s.u?(s.u+(s.t?' · '+s.t:'')):''};
   });
 }
 const inP=(p,x)=>x.act==='Oui'&&((x.last>=p.s.getTime()&&x.last<=p.e.getTime())||(x.prob&&x.prob<=p.e&&x.last<p.s.getTime()));
@@ -522,9 +579,10 @@ function render(){
     <td>${x.act==='Oui'?(()=>{const rc=resCls(x.res);return `<div class="res"><input type="text" data-k="${esc(x.key)}" data-t="r" value="${esc(x.rIn)}" placeholder="${x.resSrc==='Tier.Net'?esc(fmtRes(x.res)):'ex. 40, TND'}" aria-label="Résultat CV ${esc(x.dos)}">${rc?`<span class="pill ${rc.c}">${x.res>=1000?'':fmtRes(x.res)+' · '}${rc.t}</span>`:''}${x.resSrc==='Tier.Net'?'<span class="muted">auto · Tier.Net</span>':''}${x.pend?`<span class="muted">en attente${x.lastD?' depuis '+Math.round((today()-x.lastD)/DAY)+' j':''}</span>`:''}</div>`})():''}</td>
     <td>${x.act==='Oui'?`<input type="date" data-k="${esc(x.key)}" data-t="rd" value="${esc(x.rdIn)}" max="${iso(today())}" aria-label="Date retour du résultat ${esc(x.dos)}">`:''}</td>
     <td class="num">${x.nextRdv?'<b>'+fr(x.nextRdv)+'</b><br><span class="muted">à communiquer</span>':''}</td>
-    <td>${x.act==='Oui'?`<input type="text" id="c_${esc(x.key)}" data-k="${esc(x.key)}" data-t="c" value="${esc(x.com)}" aria-label="Commentaire ${esc(x.dos)}">`:''}</td>
+    <td>${x.act==='Oui'?`<input type="text" id="c_${esc(x.key)}" data-k="${esc(x.key)}" data-t="c" value="${esc(x.com)}" aria-label="Commentaire ${esc(x.dos)}">${x.by?'<br><span class="muted">saisi par '+esc(x.by)+'</span>':''}`:''}</td>
     <td class="num">${x.ret??''}</td></tr>`).join('')||`<tr><td colspan="12" class="muted">Aucun patient pour ce filtre.</td></tr>`;
   {const H=[...document.querySelectorAll('table.cards thead th')].map(t=>t.textContent);document.querySelectorAll('#tb tr').forEach(tr=>[...tr.children].forEach((td,i)=>{if(!td.hasAttribute('colspan'))td.dataset.l=H[i]||''}))}
+  if(!AY.can('saisir'))document.querySelectorAll('#tb input').forEach(x=>x.disabled=true);
   $('pinfo').textContent=`Page ${page+1} / ${pages}`;$('prev').disabled=page===0;$('next').disabled=page>=pages-1;
   const trs=(list,body)=>{$(body).innerHTML=list.map(p=>{const a=rows.filter(x=>inP(p,x)),d=a.filter(x=>doneP(p,x)),v=a.length?d.length/a.length:null;return `<tr><td>${esc(p.lab)}</td><td class="num">${a.length}</td><td class="num">${d.length}</td><td class="num ${pctCls(v)}">${pctTxt(v)}</td></tr>`}).join('')};
   trs(ps.filter(p=>p.type==='m'),'tbM');trs(ps.filter(p=>p.type==='q'),'tbQ');
@@ -533,13 +591,13 @@ function render(){
 }
 
 // events
-$('btnImport').onclick=()=>$('file').click();
+$('btnImport').onclick=()=>AY.can('importer')&&$('file').click();
 $('file').onchange=e=>{if(e.target.files[0])parseFile(e.target.files[0]);e.target.value=''};
 ['selEss','selPer','dRef','dFy'].forEach(id=>$(id).addEventListener('change',()=>{EDITED.clear();page=0;render()}));
 $('q').addEventListener('input',()=>{page=0;render()});
 $('chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;statusFilter=b.dataset.f;EDITED.clear();page=0;render()});
 $('prev').onclick=()=>{page--;render()};$('next').onclick=()=>{page++;render()};
-$('tb').addEventListener('change',e=>{const t=e.target;if(!t.dataset.k)return;const k=t.dataset.k;const s=SAIS[k]||{};
+$('tb').addEventListener('change',e=>{const t=e.target;if(!t.dataset.k)return;if(!AY.can('saisir')){showMsg('bad','Votre rôle ne permet pas de saisir.');render();return}const k=t.dataset.k;const s=SAIS[k]||{};
   const row0=LAST.find(x=>x.key===k);
   if(t.dataset.t==='d'){if(t.value&&fromIso(t.value)>today()){t.value=s.d||'';showMsg('bad','La date effective ne peut pas être dans le futur.');return}
     if(t.value&&row0&&row0.deb&&fromIso(t.value)<row0.deb){t.value=s.d||'';showMsg('bad','La date effective est antérieure au début du TARV : vérifiez.');return}
@@ -551,23 +609,23 @@ $('tb').addEventListener('change',e=>{const t=e.target;if(!t.dataset.k)return;co
     if(t.value&&row0&&row0.lastD&&fromIso(t.value)<row0.lastD){t.value=s.rd||'';showMsg('bad','La date de retour du résultat est antérieure à la date du prélèvement ('+fr(row0.lastD)+') : vérifiez.');return}
     s.rd=t.value||undefined}
   else s.c=t.value||undefined;
-  if(!s.d&&!s.c&&!s.r&&!s.rd)delete SAIS[k];else SAIS[k]=s;EDITED.add(k);
+  if(!s.d&&!s.c&&!s.r&&!s.rd)delete SAIS[k];else{const u=AY.user();s.u=u?u.nom:'';s.t=(d=>iso(d)+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))(new Date());SAIS[k]=s}EDITED.add(k);
   if(t.dataset.t==='d'&&t.value){const dos=k.split('|').slice(1).join('|');showMsg('info',`Prélèvement du ${fr(fromIso(t.value))} enregistré pour ${esc(dos)}. Prochain RDV CV calculé : voir la colonne « Prochain RDV CV ».`)}
   if(!store.set(K_SAIS,SAIS))showMsg('bad','Cet appareil n\'a pas pu enregistrer la saisie. Copiez la sauvegarde pour ne pas la perdre.');
   const fk=t.dataset.k,ft=t.dataset.t;render();const el=document.querySelector(`#tb [data-k="${CSS.escape(fk)}"][data-t="${ft}"]`);if(el){const ins=[...document.querySelectorAll('#tb input')];const i=ins.indexOf(el);(KEYNAV&&ins[i+1]?ins[i+1]:el).focus({preventScroll:true})}KEYNAV=false;});
 let KEYNAV=false;$('tb').addEventListener('keydown',e=>{if(e.key==='Tab'&&!e.shiftKey&&e.target.matches('input'))KEYNAV=true});
-$('btnCopy').onclick=async()=>{const lines=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV'].join('\t')].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):''].join('\t')));const txt=lines.join('\n');
+$('btnCopy').onclick=async()=>{const lines=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV','Saisi par'].join('\t')].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):'',x.by].join('\t')));const txt=lines.join('\n');
   try{await navigator.clipboard.writeText(txt);showMsg('info',`${LAST.length} lignes copiées. Collez-les dans Excel (Ctrl + V).`)}catch(e){$('bk').value=txt;$('bk').select();showMsg('info','Copie automatique refusée : la liste est dans la zone de texte « Sauvegarder ou restaurer », sélectionnée. Faites Ctrl + C.')}};
 window.ayaanPinMsg=t=>showMsg('info',t);
 const markBk=()=>store.set(K_BK,iso(today()));
 $('btnBack').onclick=async()=>{markBk();const txt=JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN});$('bk').value=txt;try{await navigator.clipboard.writeText(txt);$('bkmsg').textContent=`Sauvegarde copiée (${Object.keys(SAIS).length} saisies). Collez-la dans un fichier texte ou un courriel.`}catch(e){$('bk').select();$('bkmsg').textContent='Le texte est sélectionné : faites Ctrl + C.'}};
-$('btnRest').onclick=()=>{try{const o=JSON.parse($('bk').value);if(o.type!=='cvasf-saisies')throw 0;SAIS=Object.assign({},SAIS,o.saisies);store.set(K_SAIS,SAIS);if(o.manuels){MAN=Object.assign({},MAN,o.manuels);store.set(K_MAN,MAN);fillEss()}$('bkmsg').textContent=`${Object.keys(o.saisies).length} saisies restaurées.`;render()}catch(e){$('bkmsg').textContent='Texte non reconnu : collez exactement le texte de sauvegarde copié.'}};
-let armed=false;$('btnClear').onclick=()=>{if(!armed){armed=true;$('btnClear').textContent='Confirmer : tout effacer';$('bkmsg').textContent='Cliquez encore pour effacer l\'export et les dates saisies de cet appareil.';return}
+$('btnRest').onclick=()=>{if(!AY.can('restaurer'))return;try{const o=JSON.parse($('bk').value);if(o.type!=='cvasf-saisies')throw 0;SAIS=Object.assign({},SAIS,o.saisies);store.set(K_SAIS,SAIS);if(o.manuels){MAN=Object.assign({},MAN,o.manuels);store.set(K_MAN,MAN);fillEss()}$('bkmsg').textContent=`${Object.keys(o.saisies).length} saisies restaurées.`;render()}catch(e){$('bkmsg').textContent='Texte non reconnu : collez exactement le texte de sauvegarde copié.'}};
+let armed=false;$('btnClear').onclick=()=>{if(!AY.can('effacer'))return;if(!armed){armed=true;$('btnClear').textContent='Confirmer : tout effacer';$('bkmsg').textContent='Cliquez encore pour effacer l\'export et les dates saisies de cet appareil.';return}
   store.del(K_DATA);store.del(K_SAIS);store.del(K_MAN);SAIS={};MAN={};DATA=sample();armed=false;$('btnClear').textContent='Effacer les données de cet appareil';$('bkmsg').textContent='Données effacées.';fillEss();render()};
 
 function dl(name,text,type){const b=new Blob([text],{type});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 if(OFFLINE){['btnDl','btnBkDl','btnBkUp'].forEach(id=>$(id).hidden=false);$('offTag').textContent=' Version hors ligne : fonctionne sans Internet.'}
-$('btnDl').onclick=()=>{const rows=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV']].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):'']));
+$('btnDl').onclick=()=>{const rows=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV','Saisi par']].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):'',x.by]));
   const csv='\uFEFF'+rows.map(r=>r.map(v=>{v=String(v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
   const ess=$('selEss').value||'toutes ESS';dl(`Ayaan Suivi CV - ${ess} - ${iso(today())}.csv`,csv,'text/csv;charset=utf-8');showMsg('info',`${LAST.length} lignes téléchargées (fichier CSV, s'ouvre dans Excel).`)};
 $('btnBkDl').onclick=()=>{markBk();dl(`Ayaan Suivi CV - sauvegarde - ${iso(today())}.json`,JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN}),'application/json');$('bkmsg').textContent=`Sauvegarde enregistrée (${Object.keys(SAIS).length} saisies) dans le dossier Téléchargements.`};
@@ -579,7 +637,7 @@ function renderMan(){
   $('tbMan').innerHTML=keys.map(k=>{const m=MAN[k];return `<tr><td>${esc(m.ess)}</td><td><b>${esc(m.dos)}</b></td><td>${fr(fromIso(m.deb))}</td><td>${fr(fromIso(m.rdv))}</td><td>${fr(fromIso(m.cvd))}</td><td class="num">${m.cvr===''||m.cvr==null?'':fmtRes(m.cvr)}</td><td>${esc(m.sta||'En suivi')}</td><td>${inBase.has(k)?'corrige l\'export':'manuel'}</td><td class="row" style="flex-wrap:nowrap"><button class="btn ghost" type="button" data-ed="${esc(k)}">Modifier</button><button class="btn ghost" type="button" data-del="${esc(k)}">Supprimer</button></td></tr>`}).join('')||'<tr><td colspan="9" class="muted">Aucun patient saisi à la main.</td></tr>';
 }
 function manMsg(t){$('m_msg').textContent=t}
-$('manForm').addEventListener('submit',e=>{e.preventDefault();
+$('manForm').addEventListener('submit',e=>{e.preventDefault();if(!AY.can('manuel'))return;
   const ess=$('m_ess').value.trim(),dos=$('m_dos').value.trim(),deb=$('m_deb').value;
   if(!ess||!dos||!deb){manMsg('Renseignez l\'ESS, le N° dossier et la date de début TARV.');return}
   const t=today();for(const id of ['m_deb','m_cvd']){if($(id).value&&fromIso($(id).value)>t){manMsg('Une date de début TARV ou de CV ne peut pas être dans le futur.');return}}
@@ -606,10 +664,20 @@ function buildReport(){
       lateList:late.slice(0,300).map(x=>({dos:x.dos,due:iso(x.due),ret:x.ret,rdv:x.rdv||''}))}});
   return{type:'ayaan-rapport',v:1,gen:new Date().toISOString(),ref:iso(ref),fy:iso(fy),file:DATA&&DATA.file||'',example:!!(DATA&&DATA.example&&!Object.keys(MAN).length),sites};
 }
-$('btnRep').onclick=async()=>{const r=buildReport();if(r.example){showMsg('bad','Importez d\'abord l\'export Tier.Net du site : le rapport ne peut pas contenir les données d\'exemple.');return}
+$('btnRep').onclick=async()=>{if(!AY.can('rapport'))return;const r=buildReport();if(r.example){showMsg('bad','Importez d\'abord l\'export Tier.Net du site : le rapport ne peut pas contenir les données d\'exemple.');return}
   const txt=JSON.stringify(r);const name=`Ayaan rapport - ${r.sites.length===1?r.sites[0].ess:r.sites.length+' ESS'} - ${r.ref}.json`;
   if(OFFLINE){dl(name,txt,'application/json');showMsg('info',`Rapport enregistré dans Téléchargements (« ${esc(name)} »). Envoyez ce fichier au centralisateur (WhatsApp, courriel ou clé USB).`);return}
   try{await navigator.clipboard.writeText(txt);showMsg('info','Rapport copié. Collez-le dans le centralisateur (zone « Coller un rapport »), ou dans un message.')}catch(e){$('bk').value=txt;$('bk').select();showMsg('info','Copie refusée : le rapport est dans la zone de texte « Sauvegarder ou restaurer », sélectionné. Faites Ctrl + C.')}};
+function renderUsr(){if(!AY.can('utilisateurs')){$('tbUsr').innerHTML='';return}const me=AY.user();
+  $('tbUsr').innerHTML=AY.list().map(u=>`<tr><td><b>${esc(u.nom)}</b>${me&&me.id===u.id?' <span class="pill p-mut">vous</span>':''}</td><td>${esc(u.roleLab)}</td><td>${u.cree?fr(fromIso(u.cree)):''}</td><td class="row" style="flex-wrap:nowrap"><button class="btn ghost" type="button" data-ue="${u.id}">Modifier / nouveau PIN</button>${me&&me.id===u.id?'':`<button class="btn ghost" type="button" data-ud="${u.id}">Supprimer</button>`}</td></tr>`).join('')}
+function usrReset(){$('usrForm').reset();$('u_id').value='';$('u_save').textContent='Ajouter l\'utilisateur';$('u_pinLab').textContent='Code PIN de départ *'}
+$('usrForm').addEventListener('submit',async e=>{e.preventDefault();const id=$('u_id').value;const err=await AY.save(id,$('u_nom').value,$('u_role').value,$('u_pin').value.trim());
+  if(err){$('u_msg').textContent=err;return}$('u_msg').textContent=id?'Utilisateur modifié.':`Utilisateur ${$('u_nom').value.trim()} ajouté : donnez-lui son code PIN de départ ; il pourra le changer avec « Changer le code PIN ».`;usrReset();renderUsr()});
+$('u_reset').onclick=()=>{usrReset();$('u_msg').textContent=''};
+let uDel=null;$('tbUsr').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.ue){const u=AY.list().find(x=>x.id===b.dataset.ue);$('u_id').value=u.id;$('u_nom').value=u.nom;$('u_role').value=u.role;$('u_pin').value='';$('u_pinLab').textContent='Nouveau code PIN (vide = inchangé)';$('u_save').textContent='Enregistrer';$('u_nom').focus();return}
+  if(b.dataset.ud){if(uDel!==b.dataset.ud){uDel=b.dataset.ud;b.textContent='Confirmer';return}const err=AY.del(b.dataset.ud);uDel=null;$('u_msg').textContent=err||'Utilisateur supprimé.';renderUsr()}});
+document.addEventListener('ayaan-user',()=>{statusFilter=statusFilter;renderUsr();render()});
 // init
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 if('serviceWorker' in navigator&&navigator.serviceWorker.controller){navigator.serviceWorker.addEventListener('controllerchange',()=>{if(window.__ayRel)return;window.__ayRel=1;showMsg('info','Nouvelle version d\'Ayaan installée. <button class="btn" type="button" onclick="location.reload()">Recharger</button> (vos données sont conservées).')})}

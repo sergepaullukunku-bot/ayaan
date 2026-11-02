@@ -89,20 +89,24 @@ details summary{cursor:pointer;font-weight:600;color:var(--violet)}
 </head>
 <body>
 <style>
-#pinLock{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:linear-gradient(135deg,#3d2fa0,#1d1554);color:#fff;padding:16px}
+#pinLock{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:linear-gradient(135deg,#3d2fa0,#1d1554);color:#fff;padding:16px;overflow:auto}
 #pinLock[hidden]{display:none!important}
-#pinLock .pb{width:min(360px,100%);display:grid;gap:12px;text-align:center}
+#pinLock .pb{width:min(380px,100%);display:grid;gap:12px;text-align:center}
 #pinLock h2{margin:0;font-size:22px}
 #pinLock p{margin:0;font-size:14px;opacity:.9}
-#pinLock input{font:inherit;font-size:28px;letter-spacing:.5em;text-align:center;padding:10px;border-radius:10px;border:2px solid #f2c400;background:#fff;color:#1f1b33;width:100%}
+#pinLock input{font:inherit;font-size:26px;letter-spacing:.4em;text-align:center;padding:10px;border-radius:10px;border:2px solid #f2c400;background:#fff;color:#1f1b33;width:100%}
+#pinLock input#pinName{font-size:18px;letter-spacing:0}
 #pinLock button{font:inherit;font-weight:700;font-size:16px;border-radius:10px;border:0;padding:12px;background:#f2c400;color:#1f1b33;cursor:pointer}
 #pinLock button.lnk{background:transparent;color:#fff;text-decoration:underline;font-weight:500;font-size:14px;padding:4px}
 #pinLock .err{color:#ffb4a8;font-weight:700;min-height:1.2em}
 #pinLock .code{font-family:ui-monospace,Menlo,monospace;font-size:26px;letter-spacing:.15em;background:#fff;color:#342787;border-radius:10px;padding:10px}
+.who{font-size:12px;color:var(--muted);font-weight:600}
+.who b{color:var(--violet)}
 </style>
 <div id="pinLock" hidden role="dialog" aria-modal="true" aria-labelledby="pinT"><div class="pb">
   <h2 id="pinT">Ayaan</h2><p id="pinP"></p>
   <div id="pinCodeBox" class="code" hidden></div>
+  <input id="pinName" type="text" autocomplete="off" maxlength="40" placeholder="Votre nom" aria-label="Votre nom" hidden>
   <input id="pinIn" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Code PIN">
   <input id="pinIn2" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Confirmer le code PIN" hidden>
   <div class="err" id="pinErr" aria-live="assertive"></div>
@@ -110,60 +114,100 @@ details summary{cursor:pointer;font-weight:600;color:var(--violet)}
   <button type="button" class="lnk" id="pinForgot">Code PIN oublié ?</button>
 </div></div>
 <script>
-/* Ayaan : verrouillage par code PIN (4 à 6 chiffres). Le PIN n'est jamais stocké en clair.
-   Un code de secours, affiché une seule fois à la création, permet de choisir un nouveau PIN sans perdre les données. */
+/* Ayaan : utilisateurs, rôles et code PIN. Les PIN ne sont jamais stockés en clair (empreinte salée).
+   Matrice d'accès : voir ROLES et PERMS ci-dessous (identique au fichier « Matrice d'accès Ayaan.xlsx »).
+   Le code de secours (affiché une fois à la création du premier administrateur) permet à un administrateur
+   de choisir un nouveau PIN sans perdre les données. */
 (function(){
-const K='ayaan.pin.v1',IDLE=10*60*1000,AWAY=5*60*1000;
+const K='ayaan.users.v1',KOLD='ayaan.pin.v1',IDLE=10*60*1000,AWAY=5*60*1000;
+const ROLES={admin:'Administrateur',gest:'Gestionnaire de données',prest:'Prestataire CV',sup:'Superviseur (lecture)'};
+const PERMS={
+  admin:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde','restaurer','effacer','utilisateurs','c_importer'],
+  gest:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde','c_importer'],
+  prest:['voir','saisir','exporter'],
+  sup:['voir','exporter']};
 const $=id=>document.getElementById(id);
-const get=()=>{try{return JSON.parse(localStorage.getItem(K)||'null')}catch(e){return null}};
-const set=v=>{try{localStorage.setItem(K,JSON.stringify(v));return true}catch(e){return false}};
+const rd=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};
+const wr=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
+const ss={get(k){try{return sessionStorage.getItem(k)}catch(e){return null}},set(k,v){try{sessionStorage.setItem(k,v)}catch(e){}}};
 const rnd=n=>{const a=new Uint8Array(n);crypto.getRandomValues(a);return [...a].map(b=>b.toString(16).padStart(2,'0')).join('')};
 async function h(salt,txt){const d=new TextEncoder().encode(salt+'|'+txt);
   if(crypto.subtle){let b=await crypto.subtle.digest('SHA-256',d);for(let i=0;i<999;i++)b=await crypto.subtle.digest('SHA-256',new Uint8Array([...new Uint8Array(b),...d]));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
   let x=5381;for(let r=0;r<2000;r++)for(const c of d)x=((x*33)^c^r)>>>0;return 'f'+x.toString(16)}
 const recCode=()=>{const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789';const a=new Uint8Array(8);crypto.getRandomValues(a);const s=[...a].map(b=>A[b%A.length]).join('');return s.slice(0,4)+'-'+s.slice(4)};
-let mode='',fails=0,waitUntil=0,last=Date.now(),hiddenAt=0,newPin='';
-const L=$('pinLock'),I=$('pinIn'),I2=$('pinIn2'),E=$('pinErr'),P=$('pinP'),OK=$('pinOk'),F=$('pinForgot'),CB=$('pinCodeBox');
-function show(m){mode=m;L.hidden=false;E.textContent='';I.value='';I2.value='';I.hidden=false;I2.hidden=true;CB.hidden=true;F.hidden=m!=='unlock';OK.textContent='Valider';
-  I.setAttribute('aria-label','Code PIN');
-  if(m==='unlock'){P.textContent='Entrez votre code PIN pour ouvrir l\'application.'}
-  else if(m==='create'){P.textContent='Protégez les données des patients : choisissez un code PIN de 4 à 6 chiffres, puis confirmez-le.';I2.hidden=false}
-  else if(m==='recover'){P.textContent='Entrez le code de secours noté lors de la création du PIN (ex. ABCD-1234).';I.removeAttribute('inputmode');I.type='text';I.maxLength=9;I.setAttribute('aria-label','Code de secours')}
-  if(m!=='recover'){I.type='password';I.maxLength=6;I.setAttribute('inputmode','numeric')}
-  setTimeout(()=>I.focus(),50)}
-function hide(){L.hidden=true;mode='';last=Date.now();try{sessionStorage.setItem('ayaan.unl',String(last))}catch(e){}}
+// migration de la v7 (un seul PIN) : il devient le PIN de l'administrateur
+let DB=rd(K);
+if(!DB){const o=rd(KOLD);if(o&&o.h){DB={rs:o.rs,rh:o.rh,users:[{id:rnd(6),nom:'Administrateur',role:'admin',s:o.s,h:o.h,cree:new Date().toISOString().slice(0,10)}]};wr(K,DB)}}
+const save=()=>wr(K,DB);
+const hasUsers=()=>!!(DB&&DB.users&&DB.users.length);
+let CUR=null;
+function badPin(a){if(!/^\d{4,6}$/.test(a))return 'Le code PIN doit contenir 4 à 6 chiffres.';if(/^(\d)\1+$/.test(a)||'0123456789'.includes(a)||'9876543210'.includes(a))return 'Code trop facile à deviner (ex. 0000, 1234) : choisissez-en un autre.';return ''}
+async function findByPin(pin,exceptId){for(const u of (DB&&DB.users)||[]){if(u.id!==exceptId&&await h(u.s,pin)===u.h)return u}return null}
+function login(u){CUR=u;ss.set('ayaan.cur',u.id);ss.set('ayaan.unl',String(Date.now()));paint();document.dispatchEvent(new CustomEvent('ayaan-user',{detail:pub()}))}
+const pub=()=>CUR?{id:CUR.id,nom:CUR.nom,role:CUR.role,roleLab:ROLES[CUR.role]}:null;
+function paint(){document.querySelectorAll('[data-who]').forEach(el=>{el.innerHTML=CUR?`Connecté : <b>${CUR.nom.replace(/[&<>"]/g,'')}</b> · ${ROLES[CUR.role]}`:''});
+  document.querySelectorAll('[data-perm]').forEach(el=>{const ok=can(el.dataset.perm);if(el.tagName==='SELECT'||el.tagName==='INPUT'||el.tagName==='TEXTAREA')el.disabled=!ok;else el.hidden=!ok})}
+function can(p){return !!(CUR&&(PERMS[CUR.role]||[]).includes(p))}
+// ----- écran de verrouillage
+let mode='',fails=0,waitUntil=0,last=Date.now(),hiddenAt=0,target=null;
+const L=$('pinLock'),N=$('pinName'),I=$('pinIn'),I2=$('pinIn2'),E=$('pinErr'),P=$('pinP'),OK=$('pinOk'),F=$('pinForgot'),CB=$('pinCodeBox');
+function show(m){mode=m;L.hidden=false;E.textContent='';I.value='';I2.value='';N.value='';N.hidden=true;I.hidden=false;I2.hidden=true;CB.hidden=true;F.hidden=m!=='unlock';OK.textContent='Valider';
+  I.type='password';I.maxLength=6;I.setAttribute('inputmode','numeric');I.setAttribute('aria-label','Code PIN');
+  if(m==='unlock')P.textContent='Entrez votre code PIN pour ouvrir l\'application.';
+  else if(m==='first'){P.textContent='Première utilisation : créez le compte administrateur de cet appareil. Saisissez votre nom, puis un code PIN de 4 à 6 chiffres et confirmez-le.';N.hidden=false;I2.hidden=false}
+  else if(m==='newpin'){P.textContent='Choisissez votre nouveau code PIN, puis confirmez-le.';I2.hidden=false}
+  else if(m==='recover'){P.textContent='Administrateur : entrez le code de secours noté à la création (ex. ABCD-1234). Les autres utilisateurs demandent à l\'administrateur de réinitialiser leur PIN.';I.removeAttribute('inputmode');I.type='text';I.maxLength=9;I.setAttribute('aria-label','Code de secours')}
+  setTimeout(()=>(N.hidden?I:N).focus(),50)}
+function hide(){L.hidden=true;mode='';last=Date.now()}
 async function submit(){
-  const cfg=get();
-  if(mode==='unlock'){
+  if(mode==='unlock'||mode==='change'){
     if(Date.now()<waitUntil){E.textContent='Trop d\'essais : patientez '+Math.ceil((waitUntil-Date.now())/1000)+' s.';return}
-    if(cfg&&await h(cfg.s,I.value)===cfg.h){fails=0;hide()}else{fails++;I.value='';E.textContent='Code PIN incorrect.';if(fails>=5){waitUntil=Date.now()+30000;fails=0;E.textContent='5 essais incorrects : patientez 30 s.'}}
-  }else if(mode==='create'){
-    const a=I.value.trim(),b=I2.value.trim();
-    if(!/^\d{4,6}$/.test(a)){E.textContent='Le code PIN doit contenir 4 à 6 chiffres.';return}
-    if(/^(\d)\1+$/.test(a)||'0123456789'.includes(a)||'9876543210'.includes(a)){E.textContent='Code trop facile à deviner (ex. 0000, 1234) : choisissez-en un autre.';return}
+    const u=mode==='change'?((CUR&&await h(CUR.s,I.value)===CUR.h)?CUR:null):await findByPin(I.value);
+    if(!u){fails++;I.value='';E.textContent='Code PIN incorrect.';if(fails>=5){waitUntil=Date.now()+30000;fails=0;E.textContent='5 essais incorrects : patientez 30 s.'}return}
+    fails=0;if(mode==='change'){target=u;show('newpin');return}login(u);hide();return}
+  if(mode==='first'||mode==='newpin'){
+    const nm=N.value.trim(),a=I.value.trim(),b=I2.value.trim();
+    if(mode==='first'&&nm.length<2){E.textContent='Saisissez votre nom.';return}
+    const bp=badPin(a);if(bp){E.textContent=bp;return}
     if(a!==b){E.textContent='Les deux codes ne sont pas identiques.';I2.value='';return}
-    newPin=a;const keep=cfg&&cfg.rh?cfg:null;const s=rnd(16);
-    if(keep){set({s,h:await h(s,a),rs:keep.rs,rh:keep.rh});hide();if(window.ayaanPinMsg)window.ayaanPinMsg('Nouveau code PIN enregistré.');return}
-    const rc=recCode(),rs=rnd(16);set({s,h:await h(s,a),rs,rh:await h(rs,rc)});
-    mode='showcode';P.textContent='Code PIN enregistré. Notez ce code de secours sur papier et gardez-le en lieu sûr : il permet de choisir un nouveau PIN si vous oubliez le vôtre, sans perdre les données.';
-    CB.textContent=rc;CB.hidden=false;I.hidden=true;I2.hidden=true;E.textContent='';OK.textContent='J\'ai noté le code de secours';F.hidden=true;OK.focus();
-  }else if(mode==='showcode'){hide()}
-  else if(mode==='change'){if(cfg&&await h(cfg.s,I.value)===cfg.h){show('create');P.textContent='Choisissez le nouveau code PIN, puis confirmez-le.'}else{E.textContent='Code PIN incorrect.';I.value=''}}
-  else if(mode==='recover'){
+    if(await findByPin(a,target&&target.id)){E.textContent='Ce code PIN est déjà utilisé par un autre utilisateur : choisissez-en un autre.';return}
+    const s=rnd(16),hh=await h(s,a);
+    if(mode==='newpin'){target.s=s;target.h=hh;save();const u=target;target=null;login(u);hide();if(window.ayaanPinMsg)window.ayaanPinMsg('Nouveau code PIN enregistré.');return}
+    const rc=recCode(),rs=rnd(16);DB={rs,rh:await h(rs,rc),users:[{id:rnd(6),nom:nm,role:'admin',s,h:hh,cree:new Date().toISOString().slice(0,10)}]};save();
+    login(DB.users[0]);mode='showcode';P.textContent='Compte administrateur créé. Notez ce code de secours sur papier et gardez-le en lieu sûr : il permet à l\'administrateur de choisir un nouveau PIN s\'il l\'oublie, sans perdre les données.';
+    CB.textContent=rc;CB.hidden=false;N.hidden=true;I.hidden=true;I2.hidden=true;E.textContent='';OK.textContent='J\'ai noté le code de secours';F.hidden=true;OK.focus();return}
+  if(mode==='showcode'){hide();return}
+  if(mode==='recover'){
     const v=I.value.trim().toUpperCase().replace(/\s/g,'');const vv=v.includes('-')?v:v.slice(0,4)+'-'+v.slice(4);
-    if(cfg&&await h(cfg.rs,vv)===cfg.rh){show('create');P.textContent='Code de secours accepté. Choisissez un nouveau code PIN, puis confirmez-le.'}else{E.textContent='Code de secours incorrect.'}
-  }
+    if(DB&&await h(DB.rs,vv)===DB.rh){target=DB.users.find(u=>u.role==='admin');show('newpin');P.textContent=`Code de secours accepté. Choisissez un nouveau code PIN pour ${target.nom} (administrateur), puis confirmez-le.`}else E.textContent='Code de secours incorrect.'}
 }
 OK.onclick=submit;
-[I,I2].forEach(x=>x.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(x===I&&!I2.hidden&&!I2.value)I2.focus();else submit()}}));
+[N,I,I2].forEach(x=>x.addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();if(x===N)I.focus();else if(x===I&&!I2.hidden&&!I2.value)I2.focus();else submit()}));
 F.onclick=()=>show('recover');
-window.ayaanChangePin=()=>{if(!get())return show('create');show('unlock');mode='change';F.hidden=true;P.textContent='Entrez votre code PIN actuel.'};
-window.ayaanLock=()=>{if(get())show('unlock')};
 ['pointerdown','keydown','scroll','touchstart'].forEach(ev=>addEventListener(ev,()=>{last=Date.now()},{passive:true,capture:true}));
-setInterval(()=>{if(!mode&&get()&&Date.now()-last>IDLE)show('unlock')},15000);
-document.addEventListener('visibilitychange',()=>{if(document.hidden)hiddenAt=Date.now();else if(!mode&&get()&&hiddenAt&&Date.now()-hiddenAt>AWAY)show('unlock')});
-addEventListener('pagehide',()=>{try{if(!mode)sessionStorage.setItem('ayaan.unl',String(last))}catch(e){}});
-(function(){let u=0;try{u=+sessionStorage.getItem('ayaan.unl')||0}catch(e){}if(get()&&u&&Date.now()-u<IDLE)return;show(get()?'unlock':'create')})();
+setInterval(()=>{if(!mode&&hasUsers()&&Date.now()-last>IDLE)show('unlock')},15000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)hiddenAt=Date.now();else if(!mode&&hasUsers()&&hiddenAt&&Date.now()-hiddenAt>AWAY)show('unlock')});
+addEventListener('pagehide',()=>{if(!mode)ss.set('ayaan.unl',String(last))});
+// ----- API pour les pages
+const AY=window.AY={ROLES,PERMS,can,user:pub,
+  lock(){if(hasUsers())show('unlock')},
+  changePin(){if(!CUR)return;show('unlock');mode='change';F.hidden=true;P.textContent='Entrez votre code PIN actuel.'},
+  list(){return (DB&&DB.users||[]).map(u=>({id:u.id,nom:u.nom,role:u.role,roleLab:ROLES[u.role],cree:u.cree}))},
+  async save(id,nom,role,pin){if(!can('utilisateurs'))return 'Action réservée à l\'administrateur.';nom=String(nom||'').trim();if(nom.length<2)return 'Saisissez le nom de l\'utilisateur.';if(!ROLES[role])return 'Choisissez un rôle.';
+    const u=id?DB.users.find(x=>x.id===id):null;if(id&&!u)return 'Utilisateur introuvable.';
+    if(u&&u.role==='admin'&&role!=='admin'&&DB.users.filter(x=>x.role==='admin').length<2)return 'Il faut garder au moins un administrateur.';
+    if(!u||pin){const bp=badPin(pin||'');if(bp)return bp;if(await findByPin(pin,u&&u.id))return 'Ce code PIN est déjà utilisé par un autre utilisateur.'}
+    if(DB.users.some(x=>x.id!==id&&x.nom.toLowerCase()===nom.toLowerCase()))return 'Un utilisateur porte déjà ce nom.';
+    const t=u||{id:rnd(6),cree:new Date().toISOString().slice(0,10)};t.nom=nom;t.role=role;if(pin){t.s=rnd(16);t.h=await h(t.s,pin)}if(!u)DB.users.push(t);save();if(CUR&&CUR.id===t.id)login(t);else paint();return ''},
+  del(id){if(!can('utilisateurs'))return 'Action réservée à l\'administrateur.';const u=DB.users.find(x=>x.id===id);if(!u)return 'Utilisateur introuvable.';if(CUR&&CUR.id===id)return 'Vous ne pouvez pas supprimer votre propre compte.';
+    if(u.role==='admin'&&DB.users.filter(x=>x.role==='admin').length<2)return 'Il faut garder au moins un administrateur.';DB.users=DB.users.filter(x=>x.id!==id);save();return ''}
+};
+window.ayaanLock=AY.lock;window.ayaanChangePin=AY.changePin;
+// ----- démarrage
+(function(){if(!hasUsers()){show('first');return}
+  const cid=ss.get('ayaan.cur'),u=+ss.get('ayaan.unl')||0,me=DB.users.find(x=>x.id===cid);
+  if(me&&u&&Date.now()-u<IDLE){CUR=me;document.addEventListener('DOMContentLoaded',()=>{paint();document.dispatchEvent(new CustomEvent('ayaan-user',{detail:pub()}))});if(document.readyState!=='loading')setTimeout(()=>{paint();document.dispatchEvent(new CustomEvent('ayaan-user',{detail:pub()}))},0);return}
+  show('unlock')})();
 })();
 </script>
 
@@ -192,12 +236,12 @@ addEventListener('pagehide',()=>{try{if(!mode)sessionStorage.setItem('ayaan.unl'
   <circle cx="80.5" cy="83" r="6.5" fill="#f2c400" stroke="#342787" stroke-width="2.5"/>
 </svg><div class="brand">
       <small>Charge virale</small>
-      <h1>Ayaan Centralisateur</h1>
+      <h1>Ayaan Centralisateur</h1><div class="who" data-who></div>
       <p>Tableau de bord de toutes les ESS à partir des rapports envoyés par Ayaan Suivi CV. Fonctionne sans Internet ; les données restent sur cet ordinateur.</p>
     </div></div>
     <div class="row">
       <input type="file" id="files" accept=".json,.txt" multiple hidden>
-      <button class="btn ghost" type="button" onclick="ayaanLock()">Verrouiller</button><a class="btn ghost" href="index.html" style="text-decoration:none">Ouvrir Ayaan Suivi CV</a><button class="btn" id="btnImp" type="button">Importer des rapports</button>
+      <button class="btn ghost" type="button" onclick="ayaanLock()">Verrouiller</button><a class="btn ghost" href="index.html" style="text-decoration:none">Ouvrir Ayaan Suivi CV</a><button class="btn" id="btnImp" type="button" data-perm="c_importer">Importer des rapports</button>
     </div>
   </header>
   <div id="msg"></div>
@@ -227,18 +271,18 @@ addEventListener('pagehide',()=>{try{if(!mode)sessionStorage.setItem('ayaan.unl'
       <div><h3 class="muted" style="margin:0 0 6px">Attendus et réalisés par mois (dernier rapport)</h3><div id="chM"></div><div class="legend"><span><i style="background:var(--violet-soft);border:1px solid var(--violet)"></i>Attendus</span><span><i style="background:var(--ok)"></i>Réalisés</span></div></div>
       <div><h3 class="muted" style="margin:0 0 6px">Évolution d'un rapport à l'autre</h3><div id="chH"></div><div class="legend"><span><i style="background:var(--bad)"></i>En retard</span><span><i style="background:var(--violet)"></i>Actifs</span></div></div>
     </div>
-    <div class="row" style="justify-content:space-between"><h3 style="margin:0;color:var(--bad);font-size:15px" id="lTitle">Patients en retard (tracking actif)</h3><button class="btn ghost" id="btnCopyLate" type="button">Copier la liste</button></div>
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0;color:var(--bad);font-size:15px" id="lTitle">Patients en retard (tracking actif)</h3><button class="btn ghost" id="btnCopyLate" type="button" data-perm="exporter">Copier la liste</button></div>
     <div class="tw" style="max-height:360px"><table><thead><tr><th>N° dossier</th><th>Date probable</th><th class="num">Retard (j)</th><th>Prochain RDV ARV</th></tr></thead><tbody id="tbL"></tbody></table></div>
   </section>
 
   <section class="panel">
     <h2>Rapports reçus et sauvegarde</h2>
-    <details><summary>Coller un rapport reçu en texte</summary>
+    <details data-perm="c_importer"><summary>Coller un rapport reçu en texte</summary>
       <textarea id="paste" placeholder="Collez ici le texte du rapport (copié depuis Ayaan Suivi CV en ligne)"></textarea>
       <div class="row" style="margin-top:6px"><button class="btn ghost" id="btnPaste" type="button">Ajouter ce rapport</button></div>
     </details>
     <details><summary>Historique des rapports</summary><div class="tw" style="margin-top:8px;max-height:300px"><table><thead><tr><th>ESS</th><th>Date du rapport</th><th>Reçu le</th><th class="num">Actifs</th><th class="num">En retard</th><th></th></tr></thead><tbody id="tbH"></tbody></table></div></details>
-    <div class="row"><button class="btn ghost" id="btnSave" type="button">Enregistrer une sauvegarde (fichier)</button><button class="btn ghost" id="btnRestore" type="button">Restaurer une sauvegarde</button><input type="file" id="bkf" accept=".json" hidden><button class="btn ghost" id="btnClear" type="button">Tout effacer</button><button class="btn ghost" type="button" onclick="ayaanChangePin()">Changer le code PIN</button></div>
+    <div class="row"><button class="btn ghost" id="btnSave" type="button" data-perm="sauvegarde">Enregistrer une sauvegarde (fichier)</button><button class="btn ghost" id="btnRestore" type="button" data-perm="restaurer">Restaurer une sauvegarde</button><input type="file" id="bkf" accept=".json" hidden><button class="btn ghost" id="btnClear" type="button" data-perm="effacer">Tout effacer</button><button class="btn ghost" type="button" onclick="ayaanChangePin()">Changer le code PIN</button></div>
     <div class="muted" id="bmsg"></div>
   </section>
 </div>
@@ -320,7 +364,7 @@ function render(){
   $('tbS').innerHTML=L.map(x=>{const m=mOf(x),p=pct(m.real,m.att),age=Math.round((today()-fromIso(x.ref))/DAY),d=x.prev?x.late-x.prev.late:null;
     const tr=d==null?'<span class="muted">1er rapport</span>':d>0?`<span class="pill p-bad">▲ +${d}</span>`:d<0?`<span class="pill p-ok">▼ ${d}</span>`:'<span class="pill p-warn">= 0</span>';
     return `<tr class="click${x.ess===SEL?' sel':''}" tabindex="0" data-e="${esc(x.ess)}"><td><b>${esc(x.ess)}</b></td>
-    <td><select data-z="${esc(x.ess)}" aria-label="Zone de ${esc(x.ess)}">${[...ZONES,'Non classée'].map(z=>`<option${z===zoneOf(x.ess)?' selected':''}>${z}</option>`).join('')}</select></td>
+    <td><select data-z="${esc(x.ess)}"${AY.can('c_importer')?'':' disabled'} aria-label="Zone de ${esc(x.ess)}">${[...ZONES,'Non classée'].map(z=>`<option${z===zoneOf(x.ess)?' selected':''}>${z}</option>`).join('')}</select></td>
     <td>${fr(fromIso(x.ref))} ${age>stale?`<span class="pill p-bad">${age} j</span>`:`<span class="muted">(${age} j)</span>`}</td>
     <td class="num">${x.actifs}</td><td class="num">${m.att}</td><td class="num">${m.real}</td><td class="num ${pctCls(p)}">${pctTxt(p)}</td>
     <td class="num">${x.late?`<b style="color:var(--bad)">${x.late}</b>`:0}</td><td>${tr}</td>
@@ -335,16 +379,16 @@ function render(){
     $('lTitle').textContent=`Patients en retard (tracking actif) : ${x.late}`;
     $('tbL').innerHTML=(x.lateList||[]).map(p=>`<tr><td><b>${esc(p.dos)}</b></td><td class="num">${fr(fromIso(p.due))}</td><td class="num">${p.ret??''}</td><td class="num">${fr(fromIso(p.rdv))}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">Aucun patient en retard.</td></tr>';}
   // history
-  $('tbH').innerHTML=Object.keys(ST.reports).sort().flatMap(e=>ST.reports[e].map((r,i)=>`<tr><td>${esc(e)}</td><td>${fr(fromIso(r.ref))}</td><td>${fr(fromIso(r.recv))}</td><td class="num">${r.actifs}</td><td class="num">${r.late}</td><td><button class="btn ghost" type="button" data-del="${esc(e)}" data-i="${i}">Retirer</button></td></tr>`)).join('')||'<tr><td colspan="6" class="muted">Aucun rapport.</td></tr>';
+  $('tbH').innerHTML=Object.keys(ST.reports).sort().flatMap(e=>ST.reports[e].map((r,i)=>`<tr><td>${esc(e)}</td><td>${fr(fromIso(r.ref))}</td><td>${fr(fromIso(r.recv))}</td><td class="num">${r.actifs}</td><td class="num">${r.late}</td><td>${AY.can('c_importer')?`<button class="btn ghost" type="button" data-del="${esc(e)}" data-i="${i}">Retirer</button>`:''}</td></tr>`)).join('')||'<tr><td colspan="6" class="muted">Aucun rapport.</td></tr>';
 }
 
 // events
 $('btnImp').onclick=()=>$('files').click();
-$('files').onchange=async e=>{let ok=0,n=0,err=[];for(const f of e.target.files){try{n+=addReport(JSON.parse(await f.text()),f.name);ok++}catch(x){err.push(`${f.name} : ${x.message}`)}}
+$('files').onchange=async e=>{if(!AY.can('c_importer'))return;let ok=0,n=0,err=[];for(const f of e.target.files){try{n+=addReport(JSON.parse(await f.text()),f.name);ok++}catch(x){err.push(`${f.name} : ${x.message}`)}}
   save();e.target.value='';msg(err.length?'bad':'info',`${ok} fichier(s) importé(s), ${n} ESS mises à jour.`+(err.length?'<br>Non importé(s) : '+err.map(esc).join(' ; '):''));render()};
 $('btnPaste').onclick=()=>{try{const n=addReport(JSON.parse($('paste').value),'texte collé');save();$('paste').value='';msg('info',`Rapport ajouté : ${n} ESS mises à jour.`);render()}catch(x){msg('bad','Texte non reconnu : collez exactement le rapport copié depuis Ayaan Suivi CV.')}};
 ['selZone','selMonth','selStale'].forEach(id=>$(id).addEventListener('change',render));
-$('tbS').addEventListener('change',e=>{const s=e.target.closest('select[data-z]');if(!s)return;ST.zones[s.dataset.z]=s.value;save();render()});
+$('tbS').addEventListener('change',e=>{const s=e.target.closest('select[data-z]');if(!s||!AY.can('c_importer'))return;ST.zones[s.dataset.z]=s.value;save();render()});
 $('tbS').addEventListener('click',e=>{if(e.target.closest('select'))return;const tr=e.target.closest('tr[data-e]');if(!tr)return;SEL=tr.dataset.e;render();$('detail').scrollIntoView({behavior:'smooth'})});
 $('tbS').addEventListener('keydown',e=>{if(e.key==='Enter'){const tr=e.target.closest('tr[data-e]');if(tr){SEL=tr.dataset.e;render()}}});
 let armDel=null;
@@ -354,10 +398,11 @@ function dl(name,text){const a=document.createElement('a');a.href=URL.createObje
 $('btnSave').onclick=()=>{const d=today();dl(`Ayaan centralisateur - sauvegarde - ${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`,JSON.stringify({type:'ayaan-central',...ST}));$('bmsg').textContent='Sauvegarde enregistrée dans Téléchargements.'};
 $('btnRestore').onclick=()=>$('bkf').click();
 $('bkf').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const o=JSON.parse(await f.text());if(o.type!=='ayaan-central')throw 0;ST={reports:o.reports||{},zones:o.zones||{}};save();$('bmsg').textContent='Sauvegarde restaurée.';render()}catch(x){$('bmsg').textContent='Fichier non reconnu.'}e.target.value=''};
-let armC=false;$('btnClear').onclick=()=>{if(!armC){armC=true;$('btnClear').textContent='Confirmer : tout effacer';return}ST={reports:{},zones:{}};save();SEL=null;armC=false;$('btnClear').textContent='Tout effacer';render()};
+let armC=false;$('btnClear').onclick=()=>{if(!AY.can('effacer'))return;if(!armC){armC=true;$('btnClear').textContent='Confirmer : tout effacer';return}ST={reports:{},zones:{}};save();SEL=null;armC=false;$('btnClear').textContent='Tout effacer';render()};
 $('btnCopyLate').onclick=async()=>{const x=latest().find(a=>a.ess===SEL);if(!x)return;const t=['N° dossier\tDate probable\tRetard (j)\tProchain RDV ARV'].concat((x.lateList||[]).map(p=>[p.dos,fr(fromIso(p.due)),p.ret,fr(fromIso(p.rdv))].join('\t'))).join('\n');
   try{await navigator.clipboard.writeText(t);msg('info',`Liste de tracking de ${esc(x.ess)} copiée (${(x.lateList||[]).length} patients).`)}catch(e){$('paste').value=t;msg('info','Copie refusée : la liste est dans la zone « Coller un rapport ».')}};
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+document.addEventListener('ayaan-user',()=>render());
 render();
 })();
 </script>
