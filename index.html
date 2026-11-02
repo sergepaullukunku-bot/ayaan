@@ -108,6 +108,7 @@ textarea{min-height:90px;font-family:var(--f-num);font-size:12px}
 #daySum .it b{font-family:var(--f-num);font-size:26px;min-width:52px;text-align:right}
 #daySum .it span{font-size:14px}
 #daySum .acts{display:flex;flex-wrap:wrap;gap:8px}
+.panel>*,details{min-width:0;max-width:100%}
 #msg{position:sticky;top:0;z-index:20}#msg:empty{display:none}
 #splash{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:linear-gradient(135deg,#3d2fa0,#1d1554);color:#fff;transition:opacity .45s ease}
 #splash.out{opacity:0;pointer-events:none}
@@ -323,10 +324,12 @@ window.ayaanLock=AY.lock;$('ayRC').onclick=()=>{$('ayRights').hidden=true};$('ay
     <label class="f" for="selEss">ESS<select id="selEss"></select></label>
     <label class="f" for="selPer">Période<select id="selPer"></select></label>
     <label class="f" for="dRef">Date de référence<input type="date" id="dRef"></label>
+    <label class="f" for="selFy">Année fiscale<select id="selFy"></select></label>
     <label class="f" for="dFy">Début de l'année fiscale<input type="date" id="dFy"></label>
     <label class="f" for="q">Rechercher un N° dossier<input type="search" id="q" placeholder="ex. MU2903…"></label>
   </section>
 
+  <div id="fyBanner"></div>
   <div id="track" aria-live="polite"></div>
   <section class="tiles" id="tiles" aria-label="Synthèse"></section>
   <section class="period" id="period" aria-live="polite"></section>
@@ -348,6 +351,12 @@ window.ayaanLock=AY.lock;$('ayRC').onclick=()=>{$('ayRights').hidden=true};$('ay
     <div class="panel"><h2>Par mois</h2><div class="tw"><table><thead><tr><th>Mois</th><th class="num">Attendus</th><th class="num">Réalisés</th><th class="num">%</th></tr></thead><tbody id="tbM"></tbody></table></div></div>
     <div class="panel"><h2>Par trimestre</h2><div class="tw"><table><thead><tr><th>Trimestre</th><th class="num">Attendus</th><th class="num">Réalisés</th><th class="num">%</th></tr></thead><tbody id="tbQ"></tbody></table></div>
       <h2 style="margin-top:8px">Par ESS (période choisie)</h2><div class="tw"><table><thead><tr><th>ESS</th><th class="num">Actifs</th><th class="num">Attendus</th><th class="num">Réalisés</th><th class="num">%</th></tr></thead><tbody id="tbE"></tbody></table></div></div>
+  </section>
+
+  <section class="panel" id="archPanel">
+    <div class="row" style="justify-content:space-between"><h2 id="archTitle">Archives mensuelles</h2><span class="muted" id="archInfo"></span></div>
+    <p class="muted">Chiffres enregistrés automatiquement chaque mois (dernier état du mois), tels qu'ils étaient à l'époque. Ils restent consultables même quand l'export Tier.Net a changé. Choisissez l'année fiscale en haut de la page.</p>
+    <div class="tw"><table><thead><tr><th>Mois</th><th class="num">Actifs</th><th class="num">Attendus</th><th class="num">Réalisés</th><th class="num">%</th><th class="num">En retard</th><th class="num">Suppression</th><th class="num">CV ≥ 1 000</th><th class="num">CRA à commencer</th><th>Enregistré le</th></tr></thead><tbody id="tbArch"></tbody></table></div>
   </section>
 
   <section class="panel" id="manPanel" data-perm="manuel">
@@ -400,7 +409,7 @@ window.ayaanLock=AY.lock;$('ayRC').onclick=()=>{$('ayRights').hidden=true};$('ay
 <script>
 (function(){
 const $=id=>document.getElementById(id);
-const K_DATA='cvasf.data.v1',K_SAIS='cvasf.saisies.v1',K_MAN='cvasf.manuels.v1',K_BK='cvasf.dernsauv.v1';
+const K_DATA='cvasf.data.v1',K_SAIS='cvasf.saisies.v1',K_MAN='cvasf.manuels.v1',K_BK='cvasf.dernsauv.v1',K_ARCH='cvasf.archives.v1';
 const store={get(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 const DAY=864e5;
 const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
@@ -497,7 +506,7 @@ function parseFile(file){
       DATA={rows,file:file.name,date:iso(today()),example:false};
       const ok=store.set(K_DATA,DATA);
       showMsg('info',`Export importé : ${rows.length} lignes, ${new Set(rows.map(r=>r.ess)).size} ESS.`+(ok?'':' Attention : cet appareil n\'a pas pu garder l\'export en mémoire, il faudra le réimporter à la prochaine ouverture.'));
-      fillEss();page=0;render();
+      fillEss();page=0;snapshot();render();
     }catch(err){showMsg('bad','Lecture du fichier impossible : '+err.message)}
   };
   rd.readAsArrayBuffer(file);
@@ -584,7 +593,8 @@ function render(){
   const ref=fromIso($('dRef').value)||today();const fy=fromIso($('dFy').value)||defaultFy(ref);
   const ps=fillPer(fy,ref);const per=ps.find(p=>p.id===$('selPer').value);
   const all=compute(ref,fy,per);const essSel=$('selEss').value;const rows=essSel?all.filter(x=>x.ess===essSel):all;
-  renderMan();
+  renderMan();fillFy();renderArch();
+  {const yy=defaultFy(ref).getFullYear(),now=defaultFy(today()).getFullYear();$('fyBanner').innerHTML=yy<now?`<div class="alert info"><b>Année fiscale passée (FY${String(yy+1).slice(2)})</b> : les listes et tableaux ci-dessous sont recalculés à partir de l'export Tier.Net actuel (approximation : seule la dernière CV de chaque patient est connue). Les chiffres enregistrés à l'époque sont dans « Archives mensuelles ».</div>`:''}
   if(DATA.example&&!Object.keys(MAN).length)showMsg('info','<span class="ex">Exemple</span> Ces patients sont fictifs. Cliquez sur « Importer l\'export Tier.Net » pour charger vos données.');
   const act=rows.filter(x=>x.act==='Oui');
   const c=s=>rows.filter(x=>x.stat===s).length;
@@ -661,8 +671,8 @@ $('btnCopy').onclick=async()=>{const lines=[['N° dossier','ESS','Début ARV','D
   try{await navigator.clipboard.writeText(txt);showMsg('info',`${LAST.length} lignes copiées. Collez-les dans Excel (Ctrl + V).`)}catch(e){$('bk').value=txt;$('bk').select();showMsg('info','Copie automatique refusée : la liste est dans la zone de texte « Sauvegarder ou restaurer », sélectionnée. Faites Ctrl + C.')}};
 window.ayaanPinMsg=t=>showMsg('info',t);
 const markBk=()=>store.set(K_BK,iso(today()));
-$('btnBack').onclick=async()=>{markBk();const txt=JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN});$('bk').value=txt;try{await navigator.clipboard.writeText(txt);$('bkmsg').textContent=`Sauvegarde copiée (${Object.keys(SAIS).length} saisies). Collez-la dans un fichier texte ou un courriel.`}catch(e){$('bk').select();$('bkmsg').textContent='Le texte est sélectionné : faites Ctrl + C.'}};
-$('btnRest').onclick=()=>{if(!AY.can('restaurer'))return;try{const o=JSON.parse($('bk').value);if(o.type!=='cvasf-saisies')throw 0;SAIS=Object.assign({},SAIS,o.saisies);store.set(K_SAIS,SAIS);if(o.manuels){MAN=Object.assign({},MAN,o.manuels);store.set(K_MAN,MAN);fillEss()}$('bkmsg').textContent=`${Object.keys(o.saisies).length} saisies restaurées.`;render()}catch(e){$('bkmsg').textContent='Texte non reconnu : collez exactement le texte de sauvegarde copié.'}};
+$('btnBack').onclick=async()=>{markBk();const txt=JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN,archives:ARCH});$('bk').value=txt;try{await navigator.clipboard.writeText(txt);$('bkmsg').textContent=`Sauvegarde copiée (${Object.keys(SAIS).length} saisies). Collez-la dans un fichier texte ou un courriel.`}catch(e){$('bk').select();$('bkmsg').textContent='Le texte est sélectionné : faites Ctrl + C.'}};
+$('btnRest').onclick=()=>{if(!AY.can('restaurer'))return;try{const o=JSON.parse($('bk').value);if(o.type!=='cvasf-saisies')throw 0;SAIS=Object.assign({},SAIS,o.saisies);store.set(K_SAIS,SAIS);if(o.manuels){MAN=Object.assign({},MAN,o.manuels);store.set(K_MAN,MAN);fillEss()}if(o.archives){for(const m in o.archives){if(!ARCH[m]||(ARCH[m].gen||'')<(o.archives[m].gen||''))ARCH[m]=o.archives[m]}store.set(K_ARCH,ARCH)}$('bkmsg').textContent=`${Object.keys(o.saisies).length} saisies restaurées.`;render()}catch(e){$('bkmsg').textContent='Texte non reconnu : collez exactement le texte de sauvegarde copié.'}};
 let armed=false;$('btnClear').onclick=()=>{if(!AY.can('effacer'))return;if(!armed){armed=true;$('btnClear').textContent='Confirmer : tout effacer';$('bkmsg').textContent='Cliquez encore pour effacer l\'export et les dates saisies de cet appareil.';return}
   store.del(K_DATA);store.del(K_SAIS);store.del(K_MAN);SAIS={};MAN={};DATA=sample();armed=false;$('btnClear').textContent='Effacer les données de cet appareil';$('bkmsg').textContent='Données effacées.';fillEss();render()};
 
@@ -671,7 +681,7 @@ if(OFFLINE){['btnDl','btnBkDl','btnBkUp'].forEach(id=>$(id).hidden=false);$('off
 $('btnDl').onclick=()=>{const rows=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV','Début CRA','Saisi par']].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):'',x.craIn?fr(fromIso(x.craIn)):'',x.by]));
   const csv='\uFEFF'+rows.map(r=>r.map(v=>{v=String(v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
   const ess=$('selEss').value||'toutes ESS';dl(`Ayaan Suivi CV - ${ess} - ${iso(today())}.csv`,csv,'text/csv;charset=utf-8');showMsg('info',`${LAST.length} lignes téléchargées (fichier CSV, s'ouvre dans Excel).`)};
-$('btnBkDl').onclick=()=>{markBk();dl(`Ayaan Suivi CV - sauvegarde - ${iso(today())}.json`,JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN}),'application/json');$('bkmsg').textContent=`Sauvegarde enregistrée (${Object.keys(SAIS).length} saisies) dans le dossier Téléchargements.`};
+$('btnBkDl').onclick=()=>{markBk();dl(`Ayaan Suivi CV - sauvegarde - ${iso(today())}.json`,JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN,archives:ARCH}),'application/json');$('bkmsg').textContent=`Sauvegarde enregistrée (${Object.keys(SAIS).length} saisies) dans le dossier Téléchargements.`};
 $('btnBkUp').onclick=()=>$('bkFile').click();
 $('bkFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('bk').value=r.result;$('btnRest').click()};r.readAsText(f);e.target.value=''};
 function renderMan(){
@@ -694,8 +704,8 @@ let delArm=null;
 $('tbMan').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   if(b.dataset.ed){const m=MAN[b.dataset.ed];$('m_ess').value=m.ess;$('m_dos').value=m.dos;$('m_deb').value=m.deb||'';$('m_rdv').value=m.rdv||'';$('m_cvd').value=m.cvd||'';$('m_cvr').value=m.cvr??'';$('m_sta').value=m.sta||'';manMsg('Modifiez puis cliquez sur « Enregistrer le patient ».');$('m_dos').focus();return}
   if(b.dataset.del){if(delArm!==b.dataset.del){delArm=b.dataset.del;b.textContent='Confirmer';return}delete MAN[b.dataset.del];delArm=null;store.set(K_MAN,MAN);manMsg('Patient supprimé de la saisie manuelle.');fillEss();render()}});
-function buildReport(){
-  const ref=fromIso($('dRef').value)||today();const fy=fromIso($('dFy').value)||defaultFy(ref);
+function buildReport(refArg){
+  const ref=refArg||fromIso($('dRef').value)||today();const fy=refArg?defaultFy(refArg):(fromIso($('dFy').value)||defaultFy(ref));
   const ps=periods(fy);const cur=ps.find(p=>p.type==='m'&&ref>=p.s&&ref<=p.e)||ps[0];
   const all=compute(ref,fy,cur);const essL=[...new Set(all.map(x=>x.ess))].sort();
   const sites=essL.map(e=>{const r=all.filter(x=>x.ess===e);const act=r.filter(x=>x.act==='Oui');
@@ -707,7 +717,7 @@ function buildReport(){
       lateList:late.slice(0,300).map(x=>({dos:x.dos,due:iso(x.due),ret:x.ret,rdv:x.rdv||''}))}});
   return{type:'ayaan-rapport',v:1,gen:new Date().toISOString(),by:(u=>u?{nom:u.nom,role:u.roleLab}:null)(AY.user()),ref:iso(ref),fy:iso(fy),file:DATA&&DATA.file||'',example:!!(DATA&&DATA.example&&!Object.keys(MAN).length),sites};
 }
-$('btnRep').onclick=async()=>{if(!AY.can('rapport'))return;const r=buildReport();if(r.example){showMsg('bad','Importez d\'abord l\'export Tier.Net du site : le rapport ne peut pas contenir les données d\'exemple.');return}
+$('btnRep').onclick=async()=>{if(!AY.can('rapport'))return;snapshot();const r=buildReport();if(r.example){showMsg('bad','Importez d\'abord l\'export Tier.Net du site : le rapport ne peut pas contenir les données d\'exemple.');return}
   const txt=JSON.stringify(r);const name=`Ayaan rapport - ${r.sites.length===1?r.sites[0].ess:r.sites.length+' ESS'} - ${r.ref}.json`;
   if(OFFLINE){dl(name,txt,'application/json');showMsg('info',`Rapport enregistré dans Téléchargements (« ${esc(name)} »). Envoyez ce fichier au centralisateur (WhatsApp, courriel ou clé USB).`);return}
   try{await navigator.clipboard.writeText(txt);showMsg('info','Rapport copié. Collez-le dans le centralisateur (zone « Coller un rapport »), ou dans un message.')}catch(e){$('bk').value=txt;$('bk').select();showMsg('info','Copie refusée : le rapport est dans la zone de texte « Sauvegarder ou restaurer », sélectionné. Faites Ctrl + C.')}};
@@ -749,7 +759,26 @@ $('dsSms').onclick=()=>{location.href='sms:?&body='+encodeURIComponent(DSTXT)};
 $('dsShare').onclick=()=>{navigator.share({text:DSTXT}).catch(()=>{})};
 $('dsCopy').onclick=async()=>{try{await navigator.clipboard.writeText(DSTXT);$('dsCopy').textContent='Copié'}catch(e){$('bk').value=DSTXT;$('dsCopy').textContent='Dans la zone de sauvegarde'}setTimeout(()=>$('dsCopy').textContent='Copier',2000)};
 $('dsNotif').onclick=()=>{Notification.requestPermission().then(p=>{$('dsNotif').hidden=true;if(p==='granted'){try{localStorage.removeItem('ayaan.notif.last')}catch(e){}const d=daySummary();d&&notifyDay(d)}})};
-document.addEventListener('ayaan-user',()=>{renderUsr();render();if(!DATA.example||Object.keys(MAN).length)showDay()});
+document.addEventListener('ayaan-user',()=>{snapshot();renderUsr();render();if(!DATA.example||Object.keys(MAN).length)showDay()});
+// ----- années fiscales et archives mensuelles
+const fyLab=d=>'FY'+String(defaultFy(d).getFullYear()+1).slice(2);
+let ARCH=store.get(K_ARCH)||{};
+function fillFy(){const sel=$('selFy'),cur=sel.value;const now=defaultFy(today()).getFullYear();let min=now-4;
+  Object.keys(ARCH).forEach(m=>{const y=defaultFy(fromIso(m+'-01')).getFullYear();if(y<min)min=y});
+  const ys=[];for(let y=now;y>=min;y--)ys.push(y);
+  sel.innerHTML=ys.map(y=>`<option value="${y}">FY${String(y+1).slice(2)} (oct. ${y} – sept. ${y+1})${y===now?' · en cours':''}</option>`).join('');
+  const fy=fromIso($('dFy').value)||defaultFy(today());sel.value=String(fy.getFullYear());if(!sel.value)sel.value=String(now)}
+function snapshot(){try{if(!DATA||(DATA.example&&!Object.keys(MAN).length))return;const r=buildReport(today());const m=iso(today()).slice(0,7);
+  ARCH[m]={gen:r.gen,by:r.by,sites:r.sites.map(x=>({ess:x.ess,actifs:x.actifs,att:x.attMonth,real:x.doneMonth,late:x.late,pvlsD:x.pvlsD,pvlsN:x.pvlsN,cra:x.cra,craTodo:x.craTodo,tatMed:x.tatMed}))};
+  if(!store.set(K_ARCH,ARCH))showMsg('bad','Archives mensuelles non enregistrées : mémoire de l\'appareil pleine. Faites une sauvegarde.')}catch(e){}}
+function renderArch(){const y=+($('selFy').value||defaultFy(today()).getFullYear());const essSel=$('selEss').value;
+  $('archTitle').textContent=`Archives mensuelles · FY${String(y+1).slice(2)}${essSel?' · '+essSel:''}`;
+  let n=0;const rows=[];for(let i=0;i<12;i++){const d=new Date(y,9+i,1),m=iso(d).slice(0,7),a=ARCH[m];
+    if(!a){rows.push(`<tr><td>${MOIS[d.getMonth()].replace(/^./,c=>c.toUpperCase())} ${d.getFullYear()}</td><td colspan="9" class="muted">pas d'archive</td></tr>`);continue}n++;
+    const L=a.sites.filter(x=>!essSel||x.ess===essSel),S=k=>L.reduce((t,x)=>t+(x[k]||0),0);const att=S('att'),real=S('real'),pv=att?real/att:null,sp=S('pvlsD')?S('pvlsN')/S('pvlsD'):null;
+    rows.push(`<tr><td>${MOIS[d.getMonth()].replace(/^./,c=>c.toUpperCase())} ${d.getFullYear()}</td><td class="num">${S('actifs')}</td><td class="num">${att}</td><td class="num">${real}</td><td class="num ${pctCls(pv)}">${pctTxt(pv)}</td><td class="num">${S('late')}</td><td class="num ${pctCls(sp)}">${pctTxt(sp)}</td><td class="num">${S('cra')}</td><td class="num">${S('craTodo')}</td><td class="muted">${fr(new Date(a.gen))}${a.by?' · '+esc(a.by.nom):''}</td></tr>`)}
+  $('tbArch').innerHTML=rows.join('');$('archInfo').textContent=`${n} mois archivé(s) sur 12`}
+$('selFy').addEventListener('change',()=>{const y=+$('selFy').value,now=defaultFy(today()).getFullYear();$('dFy').value=iso(new Date(y,9,1));$('dRef').value=iso(y===now?today():new Date(y+1,8,30));EDITED.clear();page=0;render()});
 // init
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 if('serviceWorker' in navigator&&navigator.serviceWorker.controller){navigator.serviceWorker.addEventListener('controllerchange',()=>{if(window.__ayRel)return;window.__ayRel=1;showMsg('info','Nouvelle version d\'Ayaan installée. <button class="btn" type="button" onclick="location.reload()">Recharger</button> (vos données sont conservées).')})}

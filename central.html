@@ -77,6 +77,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--violet)}
 @keyframes pop{from{transform:scale(.4) rotate(-8deg);opacity:0}to{transform:none;opacity:1}}
 @keyframes up{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion: reduce){#splash .logo,#splash .nm,#splash .sb,#splash .org{animation:none}}
+.panel>*,details{min-width:0;max-width:100%}
 </style>
 <link rel="manifest" href="central.webmanifest">
 <meta name="theme-color" content="#342787">
@@ -268,6 +269,7 @@ window.ayaanLock=AY.lock;$('ayRC').onclick=()=>{$('ayRights').hidden=true};$('ay
 
   <section class="panel" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
     <label class="f" for="selZone">Zone de santé<select id="selZone"></select></label>
+    <label class="f" for="selFyC">Année fiscale<select id="selFyC"></select></label>
     <label class="f" for="selMonth">Mois<select id="selMonth"></select></label>
     <label class="f" for="selStale">Rapport considéré ancien après<select id="selStale"><option value="7">7 jours</option><option value="14" selected>14 jours</option><option value="30">30 jours</option></select></label>
   </section>
@@ -338,7 +340,7 @@ function addReport(r,src){
   return o;
 }
 function save(){if(!store.set(ST))msg('bad','Cet ordinateur n\'a pas pu enregistrer les rapports. Faites une sauvegarde en fichier.')}
-function latest(){const out=[];for(const e in ST.reports){const l=ST.reports[e];if(l.length)out.push({...l[l.length-1],prev:l.length>1?l[l.length-2]:null,hist:l})}return out.sort((a,b)=>a.ess.localeCompare(b.ess))}
+function latest(fy){const fyOf=m=>{const[y,mm]=m.split('-').map(Number);return mm>=10?y:y-1};const out=[];for(const e in ST.reports){const l0=ST.reports[e];const l=fy==null?l0:l0.filter(x=>fyOf(x.ref.slice(0,7))<=fy);const inFy=l.filter(x=>fy==null||fyOf(x.ref.slice(0,7))===fy);if(inFy.length){const last=inFy[inFy.length-1],i=l.indexOf(last);out.push({...last,prev:i>0?l[i-1]:null,hist:l})}}return out.sort((a,b)=>a.ess.localeCompare(b.ess))}
 let SEL=null;
 
 function spark(months,mk){
@@ -367,11 +369,17 @@ function lineChart(hist){
 }
 
 function render(){
-  const all=latest();
+  const fyOf=m=>{const[y,mm]=m.split('-').map(Number);return mm>=10?y:y-1};
+  const allM=[...new Set(Object.values(ST.reports).flat().flatMap(x=>(x.months||[]).map(m=>m.m)).concat(Object.values(ST.reports).flat().map(x=>x.ref.slice(0,7))))];
+  const nowFy=(()=>{const d=today();return d.getMonth()>=9?d.getFullYear():d.getFullYear()-1})();
+  const fys=[...new Set(allM.map(fyOf).concat([nowFy]))].sort((a,b)=>b-a);const fSel=$('selFyC'),fc=fSel.value;
+  fSel.innerHTML=fys.map(y=>`<option value="${y}">FY${String(y+1).slice(2)} (oct. ${y} – sept. ${y+1})${y===nowFy?' · en cours':''}</option>`).join('');fSel.value=fys.map(String).includes(fc)?fc:String(nowFy);
+  const FYS=+fSel.value;
+  const all=latest(FYS);
   // zones & months
   const zSel=$('selZone'),zc=zSel.value;const zs=[...new Set(all.map(x=>zoneOf(x.ess)))].sort();
   zSel.innerHTML=`<option value="">Toutes les zones</option>`+zs.map(z=>`<option${z===zc?' selected':''}>${esc(z)}</option>`).join('');
-  const mSel=$('selMonth'),mc=mSel.value;const ms=[...new Set(all.flatMap(x=>(x.months||[]).map(m=>m.m)))].sort();
+  const mSel=$('selMonth'),mc=mSel.value;const ms=[...new Set(all.flatMap(x=>(x.months||[]).map(m=>m.m)))].filter(m=>fyOf(m)===FYS).sort();
   const curM=(()=>{const d=today();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`})();
   mSel.innerHTML=ms.map(m=>`<option value="${m}">${mLab(m)}</option>`).join('');mSel.value=ms.includes(mc)?mc:(ms.includes(curM)?curM:(ms[0]||''));
   const mk=mSel.value,zone=zSel.value,stale=+$('selStale').value;
@@ -410,7 +418,7 @@ $('btnImp').onclick=()=>$('files').click();
 $('files').onchange=async e=>{if(!AY.can('c_importer'))return;let ok=0,n=0,rp=0,od=0,err=[];for(const f of e.target.files){try{const o=addReport(JSON.parse(await f.text()),f.name);n+=o.n;rp+=o.repl;od+=o.old;ok++}catch(x){err.push(`${f.name} : ${x.message}`)}}
   save();e.target.value='';msg(err.length?'bad':'info',`${ok} fichier(s) importé(s), ${n} ESS mises à jour`+(rp?` dont ${rp} rapport(s) remplacé(s) (même ESS, même mois)`:'')+'.'+(od?` ${od} rapport(s) ignoré(s) : plus ancien(s) que celui déjà reçu.`:'')+(err.length?'<br>Non importé(s) : '+err.map(esc).join(' ; '):''));render()};
 $('btnPaste').onclick=()=>{try{const o=addReport(JSON.parse($('paste').value),'texte collé');save();$('paste').value='';msg('info',`Rapport ajouté : ${o.n} ESS mises à jour`+(o.repl?`, dont ${o.repl} remplacé(s)`:'')+'.'+(o.old?` ${o.old} ignoré(s) car plus ancien(s).`:''));render()}catch(x){msg('bad','Texte non reconnu : collez exactement le rapport copié depuis Ayaan Suivi CV.')}};
-['selZone','selMonth','selStale'].forEach(id=>$(id).addEventListener('change',render));
+['selFyC','selZone','selMonth','selStale'].forEach(id=>$(id).addEventListener('change',render));
 $('tbS').addEventListener('change',e=>{const s=e.target.closest('select[data-z]');if(!s||!AY.can('c_importer'))return;ST.zones[s.dataset.z]=s.value;save();render()});
 $('tbS').addEventListener('click',e=>{if(e.target.closest('select'))return;const tr=e.target.closest('tr[data-e]');if(!tr)return;SEL=tr.dataset.e;render();$('detail').scrollIntoView({behavior:'smooth'})});
 $('tbS').addEventListener('keydown',e=>{if(e.key==='Enter'){const tr=e.target.closest('tr[data-e]');if(tr){SEL=tr.dataset.e;render()}}});
@@ -422,7 +430,7 @@ $('btnSave').onclick=()=>{const d=today();dl(`Ayaan centralisateur - sauvegarde 
 $('btnRestore').onclick=()=>$('bkf').click();
 $('bkf').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const o=JSON.parse(await f.text());if(o.type!=='ayaan-central')throw 0;ST={reports:o.reports||{},zones:o.zones||{}};save();$('bmsg').textContent='Sauvegarde restaurée.';render()}catch(x){$('bmsg').textContent='Fichier non reconnu.'}e.target.value=''};
 let armC=false;$('btnClear').onclick=()=>{if(!AY.can('effacer'))return;if(!armC){armC=true;$('btnClear').textContent='Confirmer : tout effacer';return}ST={reports:{},zones:{}};save();SEL=null;armC=false;$('btnClear').textContent='Tout effacer';render()};
-$('btnCopyLate').onclick=async()=>{const x=latest().find(a=>a.ess===SEL);if(!x)return;const t=['N° dossier\tDate probable\tRetard (j)\tProchain RDV ARV'].concat((x.lateList||[]).map(p=>[p.dos,fr(fromIso(p.due)),p.ret,fr(fromIso(p.rdv))].join('\t'))).join('\n');
+$('btnCopyLate').onclick=async()=>{const x=latest(+$('selFyC').value).find(a=>a.ess===SEL);if(!x)return;const t=['N° dossier\tDate probable\tRetard (j)\tProchain RDV ARV'].concat((x.lateList||[]).map(p=>[p.dos,fr(fromIso(p.due)),p.ret,fr(fromIso(p.rdv))].join('\t'))).join('\n');
   try{await navigator.clipboard.writeText(t);msg('info',`Liste de tracking de ${esc(x.ess)} copiée (${(x.lateList||[]).length} patients).`)}catch(e){$('paste').value=t;msg('info','Copie refusée : la liste est dans la zone « Coller un rapport ».')}};
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 document.addEventListener('ayaan-user',()=>render());
