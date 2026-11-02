@@ -174,11 +174,11 @@ textarea{min-height:90px;font-family:var(--f-num);font-size:12px}
 const K='ayaan.users.v1',KOLD='ayaan.pin.v1',IDLE=10*60*1000,AWAY=5*60*1000;
 const ROLES={admin:'Administrateur',gest:'Gestionnaire de données',prest:'Prestataire CV',sup:'Superviseur de site'};
 const PERMS={
-  admin:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde','restaurer','effacer','utilisateurs','central','c_importer'],
+  admin:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde','restaurer','effacer','utilisateurs','central','c_importer','annees'],
   gest:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde'],
   prest:['voir','saisir','exporter','importer','manuel','rapport'],
   sup:['voir','saisir','exporter','importer','manuel','rapport']};
-const ACTIONS=[['Ayaan Suivi CV',[['Voir les listes, les tuiles et les tableaux','voir'],['Saisir prélèvement, résultat CV, date de retour, début du CRA, commentaire','saisir'],['Copier ou télécharger la liste (Excel)','exporter'],['Importer l\'export Tier.Net','importer'],['Saisie manuelle d\'un patient (ajouter, modifier, supprimer)','manuel'],['Envoyer le rapport au centralisateur','rapport'],['Copier ou enregistrer la sauvegarde','sauvegarde'],['Restaurer une sauvegarde','restaurer'],['Effacer les données de l\'appareil','effacer'],['Gérer les utilisateurs et les PIN','utilisateurs']]],
+const ACTIONS=[['Ayaan Suivi CV',[['Voir les listes, les tuiles et les tableaux','voir'],['Saisir prélèvement, résultat CV, date de retour, début du CRA, commentaire','saisir'],['Copier ou télécharger la liste (Excel)','exporter'],['Importer l\'export Tier.Net','importer'],['Saisie manuelle d\'un patient (ajouter, modifier, supprimer)','manuel'],['Envoyer le rapport au centralisateur','rapport'],['Copier ou enregistrer la sauvegarde','sauvegarde'],['Restaurer une sauvegarde','restaurer'],['Effacer les données de l\'appareil','effacer'],['Gérer les utilisateurs et les PIN','utilisateurs'],['Ajouter les années fiscales','annees']]],
  ['Centralisateur',[['Ouvrir le centralisateur et l\'utiliser (tableau de bord, import des rapports, sauvegardes)','central']]],
  ['Compte personnel',[['Changer son propre code PIN','*'],['Verrouiller l\'application','*'],['Voir ses droits (« Mes droits »)','*']]]];
 const okFor=(role,p)=>p==='*'||(PERMS[role]||[]).includes(p);
@@ -329,7 +329,7 @@ window.ayaanLock=AY.lock;$('ayRC').onclick=()=>{$('ayRights').hidden=true};$('ay
     <label class="f" for="q">Rechercher un N° dossier<input type="search" id="q" placeholder="ex. MU2903…"></label>
   </section>
 
-  <div id="fyBanner"></div>
+  <div id="fyAlert"></div><div id="fyBanner"></div>
   <div id="track" aria-live="polite"></div>
   <section class="tiles" id="tiles" aria-label="Synthèse"></section>
   <section class="period" id="period" aria-live="polite"></section>
@@ -355,6 +355,7 @@ window.ayaanLock=AY.lock;$('ayRC').onclick=()=>{$('ayRights').hidden=true};$('ay
 
   <section class="panel" id="archPanel">
     <div class="row" style="justify-content:space-between"><h2 id="archTitle">Archives mensuelles</h2><span class="muted" id="archInfo"></span></div>
+    <div class="row" data-perm="annees"><button class="btn ghost" type="button" id="fyAddNext"></button><button class="btn ghost" type="button" id="fyAddPrev"></button><span class="muted" id="fyInfo"></span></div>
     <p class="muted">Chiffres enregistrés automatiquement chaque mois (dernier état du mois), tels qu'ils étaient à l'époque. Ils restent consultables même quand l'export Tier.Net a changé. Choisissez l'année fiscale en haut de la page.</p>
     <div class="tw"><table><thead><tr><th>Mois</th><th class="num">Actifs</th><th class="num">Attendus</th><th class="num">Réalisés</th><th class="num">%</th><th class="num">En retard</th><th class="num">Suppression</th><th class="num">CV ≥ 1 000</th><th class="num">CRA à commencer</th><th>Enregistré le</th></tr></thead><tbody id="tbArch"></tbody></table></div>
   </section>
@@ -409,7 +410,7 @@ window.ayaanLock=AY.lock;$('ayRC').onclick=()=>{$('ayRights').hidden=true};$('ay
 <script>
 (function(){
 const $=id=>document.getElementById(id);
-const K_DATA='cvasf.data.v1',K_SAIS='cvasf.saisies.v1',K_MAN='cvasf.manuels.v1',K_BK='cvasf.dernsauv.v1',K_ARCH='cvasf.archives.v1';
+const K_DATA='cvasf.data.v1',K_SAIS='cvasf.saisies.v1',K_MAN='cvasf.manuels.v1',K_BK='cvasf.dernsauv.v1',K_ARCH='cvasf.archives.v1',K_FYL='cvasf.annees.v1';
 const store={get(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 const DAY=864e5;
 const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
@@ -530,39 +531,51 @@ function getRows(){
 }
 function nextFrom(deb,d,res){if(!d)return addM(deb,6);if(res!=null&&res>=1000)return addM(d,3);if(d<addM(deb,11))return addM(deb,12);return addM(d,12)}
 function compute(ref,fy,per){
+  // Logique identique pour l'année en cours et les années passées : seuls les événements
+  // survenus au plus tard à la date de référence (ref) sont pris en compte.
   const ms=new Date(ref.getFullYear(),ref.getMonth(),1),me=new Date(ref.getFullYear(),ref.getMonth()+1,0);
   const PS=per?per.s.getTime():ms.getTime(),PE=per?per.e.getTime():me.getTime();
+  const lendemain=new Date(ref.getFullYear(),ref.getMonth(),ref.getDate()+1);
   return getRows().map(r=>{
-    const deb=fromIso(r.deb),rdv=fromIso(r.rdv),cvd=fromIso(r.cvd),key=r.ess+'|'+r.dos,s=SAIS[key]||{};
-    const sd=fromIso(s.d);let act;
+    const deb=fromIso(r.deb),rdv=fromIso(r.rdv),cvd0=fromIso(r.cvd),key=r.ess+'|'+r.dos,s=SAIS[key]||{};
+    const sd0=fromIso(s.d);let act;
+    const cvdOK=cvd0&&cvd0<=ref?cvd0:null, sdOK=sd0&&sd0<=ref?sd0:null;   // pas d'événement postérieur à ref
     const st=norm(r.sta);
-    if(!deb)act='Non : pré-TARV';else if(st.includes('deced')||st.includes('transf'))act='Non : décédé / transféré';else if(st.includes('perdu'))act='Non : perdu de vue';else if(!rdv)act='Non : sans date de RDV';else act=(ref<=new Date(rdv.getTime()+28*DAY))?'Oui':'Non : IIT (> 28 j)';
-    const cvT=cvd?cvd.getTime():0, sT=sd?sd.getTime():0, last=Math.max(cvT,sT);
+    if(!deb)act='Non : pré-TARV';else if(deb>ref)act='Non : pas encore sous TARV à cette date';else if(st.includes('deced')||st.includes('transf'))act='Non : décédé / transféré';else if(st.includes('perdu'))act='Non : perdu de vue';else if(!rdv)act='Non : sans date de RDV';else act=(ref<=new Date(rdv.getTime()+28*DAY))?'Oui':'Non : IIT (> 28 j)';
+    const cvT=cvdOK?cvdOK.getTime():0, sT=sdOK?sdOK.getTime():0, last=Math.max(cvT,sT);
     const lastD=last?new Date(last):null;
-    const tnInP=cvT>=PS&&cvT<=PE, saisieNew=sT>cvT;
-    const sr=(s.r!=null&&s.r!=='')?parseRes(s.r):null;
-    const res=sr!=null?sr:(saisieNew?null:r.cvr);                 // résultat du dernier prélèvement
-    const resD=lastD, resRet=fromIso(s.rd), resSrc=sr!=null?'saisi':(res!=null?'Tier.Net':'');
-    const pend=!!lastD&&res==null&&saisieNew;                         // prélevé, résultat pas encore retourné
-    let prob=null,due=null,nextRdv=null,eff=null,effSrc='',stat,ret=null;
+    const saisieNew=sT>cvT;
+    const srRaw=(s.r!=null&&s.r!=='')?parseRes(s.r):null;
+    const sr=srRaw!=null&&(sdOK||(!sd0&&cvdOK))?srRaw:null;               // résultat saisi, seulement s'il porte sur un prélèvement ≤ ref
+    const res=sr!=null?sr:(saisieNew?null:(cvdOK?r.cvr:null));           // résultat du dernier prélèvement connu à ref
+    const resD=lastD, rd0=fromIso(s.rd), resRet=rd0&&rd0<=ref?rd0:null, resSrc=sr!=null?'saisi':(res!=null?'Tier.Net':'');
+    const pend=!!lastD&&res==null&&saisieNew;
+    let prob=null,due=null,dueOrig=null,nextRdv=null,eff=null,effSrc='',stat,ret=null,rep=null,mrep=0;
     if(act==='Oui'){
       const fyc=d=>d<fy?fy:d;
-      prob=fyc(nextFrom(deb,lastD,res));          // projection depuis le dernier prélèvement (sert aux attendus)
-      if(saisieNew){eff=sd;effSrc='saisie'}else if(tnInP){eff=cvd;effSrc='Tier.Net'}
-      if(eff){
-        due=saisieNew?fyc(nextFrom(deb,cvd,r.cvr)):null;            // échéance du cycle qui vient d'être réalisé
-        nextRdv=nextFrom(deb,eff,res);    // prochain RDV CV à communiquer au patient
-        stat='Prélevé le '+fr(eff)+(effSrc==='Tier.Net'?' (Tier.Net)':'');
+      dueOrig=nextFrom(deb,lastD,res);                // échéance d'origine (sans report)
+      prob=fyc(dueOrig);                              // sert aux attendus : reportée au 1er mois de l'exercice si plus ancienne
+      // date effective remplie automatiquement : dernier prélèvement de l'année fiscale, au plus tard à ref
+      if(lastD&&lastD>=fy){eff=lastD;effSrc=saisieNew?'saisie':'Tier.Net'}
+      if(eff)nextRdv=nextFrom(deb,eff,res);           // prochain RDV CV calculé automatiquement
+      if(lastD&&last>=PS&&last<=PE){                  // prélevé pendant la période choisie
+        due=saisieNew&&cvdOK?fyc(nextFrom(deb,cvdOK,r.cvr)):null;
+        stat='Prélevé le '+fr(lastD)+(effSrc==='Tier.Net'?' (Tier.Net)':'');
       }else{
         due=prob;
         if(due<ref)stat='En retard';else if(due<=me)stat='À prélever ce mois';else stat='À venir';
-        if(stat!=='À venir')ret=Math.max(0,Math.round((ref-due)/DAY));
+        if(stat==='En retard'){
+          ret=Math.max(0,Math.round((ref-dueOrig)/DAY));              // jours de retard depuis la date d'origine
+          rep=lendemain;                                               // patient raté : RDV reporté au lendemain, chaque jour
+          mrep=(ref.getFullYear()-dueOrig.getFullYear())*12+ref.getMonth()-dueOrig.getMonth(); // mois de report depuis le mois d'origine
+          nextRdv=rep;
+        }else if(stat==='À prélever ce mois')ret=0;
       }
     }else stat='Non actif';
-    const craD=fromIso(s.cra),hi=act==='Oui'&&res!=null&&res>=1000,craTodo=hi&&(!craD||(resD&&craD<resD));
+    const craD0=fromIso(s.cra),craD=craD0&&craD0<=ref?craD0:null,hi=act==='Oui'&&res!=null&&res>=1000,craTodo=hi&&(!craD||(resD&&craD<resD));
     const same=(a,b)=>a&&b&&a.getTime()===b.getTime();
-    const todayF=act==='Oui'&&!eff&&((due&&same(due,ref))||(rdv&&same(rdv,ref)&&(stat==='En retard'||stat==='À prélever ce mois')));
-    return {...r,key,act,prob,due,nextRdv,stat,ret,last,lastD,cvd,deb,sd,eff,effSrc,com:s.c||'',res,resD,resRet,resSrc,pend,craIn:s.cra||'',craTodo,todayF,rdvD:rdv,rIn:s.r||'',rdIn:s.rd||'',by:s.u?(s.u+(s.t?' · '+s.t:'')):''};
+    const todayF=act==='Oui'&&!(lastD&&last>=PS&&last<=PE)&&((due&&same(due,ref))||(rdv&&same(rdv,ref)&&(stat==='En retard'||stat==='À prélever ce mois')));
+    return {...r,key,act,prob,due,dueOrig,rep,mrep,nextRdv,stat,ret,last,lastD,cvd:cvd0,deb,sd:sd0,eff,effSrc,com:s.c||'',res,resD,resRet,resSrc,pend,craIn:s.cra||'',craTodo,todayF,rdvD:rdv,rIn:s.r||'',rdIn:s.rd||'',by:s.u?(s.u+(s.t?' · '+s.t:'')):''};
   });
 }
 const inP=(p,x)=>x.act==='Oui'&&((x.last>=p.s.getTime()&&x.last<=p.e.getTime())||(x.prob&&x.prob<=p.e&&x.last<p.s.getTime()));
@@ -623,12 +636,12 @@ function render(){
   $('tb').innerHTML=L.slice(page*PAGE,page*PAGE+PAGE).map(x=>`<tr${x.stat==='En retard'?' class="late"':''}>
     <td><b>${esc(x.dos)}</b>${x.src==='Saisie manuelle'||x.src==='Export corrigé'?' <span class="pill p-mut">'+(x.src==='Saisie manuelle'?'manuel':'corrigé')+'</span>':''}</td>
     <td>${esc(x.ess)}</td><td class="num">${fr(x.deb)}</td><td class="num">${fr(x.cvd)}${x.cvr!=null&&x.cvd?'<br><span class="muted">'+x.cvr+' cp/ml</span>':''}</td>
-    <td class="num">${x.act==='Oui'?(x.due?fr(x.due):'<span class="muted">—</span>'):'<span class="muted">'+esc(x.act)+'</span>'}</td>
+    <td class="num">${x.act==='Oui'?(x.stat==='En retard'?fr(x.dueOrig)+'<br><span class="muted">date d\'origine</span>':(x.due?fr(x.due):'<span class="muted">—</span>')):'<span class="muted">'+esc(x.act)+'</span>'}</td>
     <td><span class="pill ${pillCls(x.stat)}">${esc(x.stat)}</span>${x.stat==='En retard'?'<br><span class="track">Tracking actif</span>':''}${x.todayF?'<br><span class="pill p-warn">Aujourd\'hui</span>':''}</td>
     <td>${x.act==='Oui'?`<input type="date" id="d_${esc(x.key)}" data-k="${esc(x.key)}" data-t="d" value="${x.eff?iso(x.eff):''}" max="${iso(today())}" ${x.effSrc==='Tier.Net'?'title="Date reprise de Tier.Net" style="border-color:var(--ok)"':''} aria-label="Date effective ${esc(x.dos)}">${x.effSrc==='Tier.Net'?'<br><span class="muted">auto · Tier.Net</span>':''}`:''}</td>
     <td>${x.act==='Oui'?(()=>{const rc=resCls(x.res);return `<div class="res"><input type="text" data-k="${esc(x.key)}" data-t="r" value="${esc(x.rIn)}" placeholder="${x.resSrc==='Tier.Net'?esc(fmtRes(x.res)):'ex. 40, TND'}" aria-label="Résultat CV ${esc(x.dos)}">${rc?`<span class="pill ${rc.c}">${x.res>=1000?'':fmtRes(x.res)+' · '}${rc.t}</span>`:''}${x.resSrc==='Tier.Net'?'<span class="muted">auto · Tier.Net</span>':''}${x.pend?`<span class="muted">en attente${x.lastD?' depuis '+Math.round((today()-x.lastD)/DAY)+' j':''}</span>`:''}${x.res!=null&&x.res>=1000?`<label class="muted" style="display:grid;gap:2px;margin-top:4px">Début du CRA<input type="date" data-k="${esc(x.key)}" data-t="cra" value="${esc(x.craIn)}" max="${iso(today())}" aria-label="Date de début du CRA ${esc(x.dos)}"></label>${x.craTodo?'<span class="pill p-cra">CRA à commencer</span>':'<span class="pill p-ok">CRA commencé</span>'}`:''}</div>`})():''}</td>
     <td>${x.act==='Oui'?`<input type="date" data-k="${esc(x.key)}" data-t="rd" value="${esc(x.rdIn)}" max="${iso(today())}" aria-label="Date retour du résultat ${esc(x.dos)}">`:''}</td>
-    <td class="num">${x.nextRdv?'<b>'+fr(x.nextRdv)+'</b><br><span class="muted">à communiquer</span>':''}</td>
+    <td class="num">${x.rep?'<b style="color:var(--bad)">'+fr(x.rep)+'</b><br><span class="muted">reporté au lendemain'+(x.mrep?' · reporté '+x.mrep+' mois':'')+'</span>':(x.nextRdv?'<b>'+fr(x.nextRdv)+'</b><br><span class="muted">à communiquer</span>':'')}</td>
     <td>${x.act==='Oui'?`<input type="text" id="c_${esc(x.key)}" data-k="${esc(x.key)}" data-t="c" value="${esc(x.com)}" aria-label="Commentaire ${esc(x.dos)}">${x.by?'<br><span class="muted">saisi par '+esc(x.by)+'</span>':''}`:''}</td>
     <td class="num">${x.ret??''}</td></tr>`).join('')||`<tr><td colspan="12" class="muted">Aucun patient pour ce filtre.</td></tr>`;
   {const H=[...document.querySelectorAll('table.cards thead th')].map(t=>t.textContent);document.querySelectorAll('#tb tr').forEach(tr=>[...tr.children].forEach((td,i)=>{if(!td.hasAttribute('colspan'))td.dataset.l=H[i]||''}))}
@@ -667,21 +680,21 @@ $('tb').addEventListener('change',e=>{const t=e.target;if(!t.dataset.k)return;if
   if(!store.set(K_SAIS,SAIS))showMsg('bad','Cet appareil n\'a pas pu enregistrer la saisie. Copiez la sauvegarde pour ne pas la perdre.');
   const fk=t.dataset.k,ft=t.dataset.t;render();const el=document.querySelector(`#tb [data-k="${CSS.escape(fk)}"][data-t="${ft}"]`);if(el){const ins=[...document.querySelectorAll('#tb input')];const i=ins.indexOf(el);(KEYNAV&&ins[i+1]?ins[i+1]:el).focus({preventScroll:true})}KEYNAV=false;});
 let KEYNAV=false;$('tb').addEventListener('keydown',e=>{if(e.key==='Tab'&&!e.shiftKey&&e.target.matches('input'))KEYNAV=true});
-$('btnCopy').onclick=async()=>{const lines=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV','Début CRA','Saisi par'].join('\t')].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):'',x.craIn?fr(fromIso(x.craIn)):'',x.by].join('\t')));const txt=lines.join('\n');
+$('btnCopy').onclick=async()=>{const lines=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV','Début CRA','Saisi par'].join('\t')].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv)+(x.rep?' (reporté'+(x.mrep?', '+x.mrep+' mois':'')+')':''),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):'',x.craIn?fr(fromIso(x.craIn)):'',x.by].join('\t')));const txt=lines.join('\n');
   try{await navigator.clipboard.writeText(txt);showMsg('info',`${LAST.length} lignes copiées. Collez-les dans Excel (Ctrl + V).`)}catch(e){$('bk').value=txt;$('bk').select();showMsg('info','Copie automatique refusée : la liste est dans la zone de texte « Sauvegarder ou restaurer », sélectionnée. Faites Ctrl + C.')}};
 window.ayaanPinMsg=t=>showMsg('info',t);
 const markBk=()=>store.set(K_BK,iso(today()));
-$('btnBack').onclick=async()=>{markBk();const txt=JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN,archives:ARCH});$('bk').value=txt;try{await navigator.clipboard.writeText(txt);$('bkmsg').textContent=`Sauvegarde copiée (${Object.keys(SAIS).length} saisies). Collez-la dans un fichier texte ou un courriel.`}catch(e){$('bk').select();$('bkmsg').textContent='Le texte est sélectionné : faites Ctrl + C.'}};
-$('btnRest').onclick=()=>{if(!AY.can('restaurer'))return;try{const o=JSON.parse($('bk').value);if(o.type!=='cvasf-saisies')throw 0;SAIS=Object.assign({},SAIS,o.saisies);store.set(K_SAIS,SAIS);if(o.manuels){MAN=Object.assign({},MAN,o.manuels);store.set(K_MAN,MAN);fillEss()}if(o.archives){for(const m in o.archives){if(!ARCH[m]||(ARCH[m].gen||'')<(o.archives[m].gen||''))ARCH[m]=o.archives[m]}store.set(K_ARCH,ARCH)}$('bkmsg').textContent=`${Object.keys(o.saisies).length} saisies restaurées.`;render()}catch(e){$('bkmsg').textContent='Texte non reconnu : collez exactement le texte de sauvegarde copié.'}};
+$('btnBack').onclick=async()=>{markBk();const txt=JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN,archives:ARCH,annees:FYL});$('bk').value=txt;try{await navigator.clipboard.writeText(txt);$('bkmsg').textContent=`Sauvegarde copiée (${Object.keys(SAIS).length} saisies). Collez-la dans un fichier texte ou un courriel.`}catch(e){$('bk').select();$('bkmsg').textContent='Le texte est sélectionné : faites Ctrl + C.'}};
+$('btnRest').onclick=()=>{if(!AY.can('restaurer'))return;try{const o=JSON.parse($('bk').value);if(o.type!=='cvasf-saisies')throw 0;SAIS=Object.assign({},SAIS,o.saisies);store.set(K_SAIS,SAIS);if(o.manuels){MAN=Object.assign({},MAN,o.manuels);store.set(K_MAN,MAN);fillEss()}if(Array.isArray(o.annees)){fyInit();FYL=[...new Set(FYL.concat(o.annees))];store.set(K_FYL,FYL)}if(o.archives){for(const m in o.archives){if(!ARCH[m]||(ARCH[m].gen||'')<(o.archives[m].gen||''))ARCH[m]=o.archives[m]}store.set(K_ARCH,ARCH)}$('bkmsg').textContent=`${Object.keys(o.saisies).length} saisies restaurées.`;render()}catch(e){$('bkmsg').textContent='Texte non reconnu : collez exactement le texte de sauvegarde copié.'}};
 let armed=false;$('btnClear').onclick=()=>{if(!AY.can('effacer'))return;if(!armed){armed=true;$('btnClear').textContent='Confirmer : tout effacer';$('bkmsg').textContent='Cliquez encore pour effacer l\'export et les dates saisies de cet appareil.';return}
   store.del(K_DATA);store.del(K_SAIS);store.del(K_MAN);SAIS={};MAN={};DATA=sample();armed=false;$('btnClear').textContent='Effacer les données de cet appareil';$('bkmsg').textContent='Données effacées.';fillEss();render()};
 
 function dl(name,text,type){const b=new Blob([text],{type});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 if(OFFLINE){['btnDl','btnBkDl','btnBkUp'].forEach(id=>$(id).hidden=false);$('offTag').textContent=' Version hors ligne : fonctionne sans Internet.'}
-$('btnDl').onclick=()=>{const rows=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV','Début CRA','Saisi par']].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):'',x.craIn?fr(fromIso(x.craIn)):'',x.by]));
+$('btnDl').onclick=()=>{const rows=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV','Début CRA','Saisi par']].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv)+(x.rep?' (reporté'+(x.mrep?', '+x.mrep+' mois':'')+')':''),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):'',x.craIn?fr(fromIso(x.craIn)):'',x.by]));
   const csv='\uFEFF'+rows.map(r=>r.map(v=>{v=String(v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
   const ess=$('selEss').value||'toutes ESS';dl(`Ayaan Suivi CV - ${ess} - ${iso(today())}.csv`,csv,'text/csv;charset=utf-8');showMsg('info',`${LAST.length} lignes téléchargées (fichier CSV, s'ouvre dans Excel).`)};
-$('btnBkDl').onclick=()=>{markBk();dl(`Ayaan Suivi CV - sauvegarde - ${iso(today())}.json`,JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN,archives:ARCH}),'application/json');$('bkmsg').textContent=`Sauvegarde enregistrée (${Object.keys(SAIS).length} saisies) dans le dossier Téléchargements.`};
+$('btnBkDl').onclick=()=>{markBk();dl(`Ayaan Suivi CV - sauvegarde - ${iso(today())}.json`,JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN,archives:ARCH,annees:FYL}),'application/json');$('bkmsg').textContent=`Sauvegarde enregistrée (${Object.keys(SAIS).length} saisies) dans le dossier Téléchargements.`};
 $('btnBkUp').onclick=()=>$('bkFile').click();
 $('bkFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('bk').value=r.result;$('btnRest').click()};r.readAsText(f);e.target.value=''};
 function renderMan(){
@@ -714,7 +727,7 @@ function buildReport(refArg){
     return{ess:e,actifs:act.length,iit:r.filter(x=>x.act.startsWith('Non : IIT')).length,late:late.length,todo:r.filter(x=>x.stat==='À prélever ce mois').length,
       doneMonth:r.filter(x=>doneP(cur,x)).length,attMonth:r.filter(x=>inP(cur,x)).length,manual:r.filter(x=>x.src==='Saisie manuelle'||x.src==='Export corrigé').length,
       cvAJour:act.filter(x=>x.lastD&&x.lastD>=addM(ref,-12)).length,months,...(()=>{const q=supp(r,ref);return{pvlsD:q.d,pvlsN:q.n,und:q.u,low:q.low,cra:q.cra,pend:r.filter(x=>x.act==='Oui'&&x.pend).length,craTodo:r.filter(x=>x.craTodo).length,tatMed:tat(r,ref).med}})(),
-      lateList:late.slice(0,300).map(x=>({dos:x.dos,due:iso(x.due),ret:x.ret,rdv:x.rdv||''}))}});
+      lateList:late.slice(0,300).map(x=>({dos:x.dos,due:iso(x.dueOrig),rep:iso(x.rep),mrep:x.mrep,ret:x.ret,rdv:x.rdv||''}))}});
   return{type:'ayaan-rapport',v:1,gen:new Date().toISOString(),by:(u=>u?{nom:u.nom,role:u.roleLab}:null)(AY.user()),ref:iso(ref),fy:iso(fy),file:DATA&&DATA.file||'',example:!!(DATA&&DATA.example&&!Object.keys(MAN).length),sites};
 }
 $('btnRep').onclick=async()=>{if(!AY.can('rapport'))return;snapshot();const r=buildReport();if(r.example){showMsg('bad','Importez d\'abord l\'export Tier.Net du site : le rapport ne peut pas contenir les données d\'exemple.');return}
@@ -763,11 +776,18 @@ document.addEventListener('ayaan-user',()=>{snapshot();renderUsr();render();if(!
 // ----- années fiscales et archives mensuelles
 const fyLab=d=>'FY'+String(defaultFy(d).getFullYear()+1).slice(2);
 let ARCH=store.get(K_ARCH)||{};
-function fillFy(){const sel=$('selFy'),cur=sel.value;const now=defaultFy(today()).getFullYear();let min=now-4;
-  Object.keys(ARCH).forEach(m=>{const y=defaultFy(fromIso(m+'-01')).getFullYear();if(y<min)min=y});
-  const ys=[];for(let y=now;y>=min;y--)ys.push(y);
-  sel.innerHTML=ys.map(y=>`<option value="${y}">FY${String(y+1).slice(2)} (oct. ${y} – sept. ${y+1})${y===now?' · en cours':''}</option>`).join('');
-  const fy=fromIso($('dFy').value)||defaultFy(today());sel.value=String(fy.getFullYear());if(!sel.value)sel.value=String(now)}
+let FYL=store.get(K_FYL);
+function fyInit(){if(Array.isArray(FYL)&&FYL.length)return;const now=defaultFy(today()).getFullYear();let min=now-1;
+  Object.keys(ARCH).forEach(m=>{const y=defaultFy(fromIso(m+'-01')).getFullYear();if(y<min)min=y});FYL=[];for(let y=min;y<=now;y++)FYL.push(y);store.set(K_FYL,FYL)}
+const fyName=y=>'FY'+String(y+1).slice(2);
+function fillFy(){fyInit();const sel=$('selFy');const now=defaultFy(today()).getFullYear();const ys=[...FYL].sort((a,b)=>b-a);
+  sel.innerHTML=ys.map(y=>`<option value="${y}">${fyName(y)} (oct. ${y} – sept. ${y+1})${y===now?' · en cours':''}</option>`).join('');
+  const fy=fromIso($('dFy').value)||defaultFy(today());sel.value=String(fy.getFullYear());if(!sel.value)sel.value=String(ys[0]);
+  const last=Math.max(...FYL),fin=new Date(last+1,8,30),next=last+1,canAdd=today()>fin;
+  $('fyAddNext').textContent=`Ajouter l'année fiscale suivante (${fyName(next)})`;$('fyAddNext').disabled=!canAdd;
+  $('fyAddPrev').textContent=`Ajouter une année précédente (${fyName(Math.min(...FYL)-1)})`;
+  $('fyInfo').textContent=canAdd?`${fyName(last)} est terminée depuis le ${fr(fin)} : ajoutez ${fyName(next)}.`:`${fyName(next)} pourra être ajoutée à partir du ${fr(new Date(last+1,9,1))}, après la fin de ${fyName(last)}.`;
+  $('fyAlert').innerHTML=canAdd&&now>last?`<div class="alert bad">L'année fiscale ${fyName(now)} a commencé mais n'est pas encore ajoutée${AY.can('annees')?' : utilisez « Ajouter l\'année fiscale suivante » dans « Archives mensuelles ».':' : demandez à l\'administrateur de l\'ajouter.'}</div>`:''}
 function snapshot(){try{if(!DATA||(DATA.example&&!Object.keys(MAN).length))return;const r=buildReport(today());const m=iso(today()).slice(0,7);
   ARCH[m]={gen:r.gen,by:r.by,sites:r.sites.map(x=>({ess:x.ess,actifs:x.actifs,att:x.attMonth,real:x.doneMonth,late:x.late,pvlsD:x.pvlsD,pvlsN:x.pvlsN,cra:x.cra,craTodo:x.craTodo,tatMed:x.tatMed}))};
   if(!store.set(K_ARCH,ARCH))showMsg('bad','Archives mensuelles non enregistrées : mémoire de l\'appareil pleine. Faites une sauvegarde.')}catch(e){}}
@@ -778,6 +798,8 @@ function renderArch(){const y=+($('selFy').value||defaultFy(today()).getFullYear
     const L=a.sites.filter(x=>!essSel||x.ess===essSel),S=k=>L.reduce((t,x)=>t+(x[k]||0),0);const att=S('att'),real=S('real'),pv=att?real/att:null,sp=S('pvlsD')?S('pvlsN')/S('pvlsD'):null;
     rows.push(`<tr><td>${MOIS[d.getMonth()].replace(/^./,c=>c.toUpperCase())} ${d.getFullYear()}</td><td class="num">${S('actifs')}</td><td class="num">${att}</td><td class="num">${real}</td><td class="num ${pctCls(pv)}">${pctTxt(pv)}</td><td class="num">${S('late')}</td><td class="num ${pctCls(sp)}">${pctTxt(sp)}</td><td class="num">${S('cra')}</td><td class="num">${S('craTodo')}</td><td class="muted">${fr(new Date(a.gen))}${a.by?' · '+esc(a.by.nom):''}</td></tr>`)}
   $('tbArch').innerHTML=rows.join('');$('archInfo').textContent=`${n} mois archivé(s) sur 12`}
+$('fyAddNext').onclick=()=>{if(!AY.can('annees'))return;const last=Math.max(...FYL);if(!(today()>new Date(last+1,8,30)))return;FYL.push(last+1);store.set(K_FYL,FYL);showMsg('info',`Année fiscale ${fyName(last+1)} ajoutée.`);fillFy();$('selFy').value=String(last+1);$('selFy').dispatchEvent(new Event('change'))};
+$('fyAddPrev').onclick=()=>{if(!AY.can('annees'))return;const y=Math.min(...FYL)-1;FYL.push(y);store.set(K_FYL,FYL);showMsg('info',`Année fiscale ${fyName(y)} ajoutée à la liste.`);fillFy()};
 $('selFy').addEventListener('change',()=>{const y=+$('selFy').value,now=defaultFy(today()).getFullYear();$('dFy').value=iso(new Date(y,9,1));$('dRef').value=iso(y===now?today():new Date(y+1,8,30));EDITED.clear();page=0;render()});
 // init
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
