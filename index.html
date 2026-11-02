@@ -80,6 +80,26 @@ textarea{min-height:90px;font-family:var(--f-num);font-size:12px}
 
 .logo{width:56px;height:56px;flex:none}
 .brandrow{display:flex;gap:14px;align-items:center}
+
+@media (max-width:700px){
+  .tw:has(table.cards){overflow:visible;border:0}
+  table.cards thead{display:none}
+  table.cards,table.cards tbody{display:block}
+  table.cards tr{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding:12px;margin-bottom:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+  table.cards tr.late{border-left:5px solid var(--bad)}
+  table.cards tr.late td:first-child{box-shadow:none}
+  table.cards td{border:0;padding:0;text-align:left!important;min-width:0}
+  table.cards td::before{content:attr(data-l);display:block;font-size:11px;font-weight:600;letter-spacing:.03em;color:var(--muted);font-family:var(--f-body)}
+  table.cards td:nth-child(1){order:-2;font-size:16px}
+  table.cards td:nth-child(6){order:-1;justify-self:end;text-align:right!important}
+  table.cards td:nth-child(1)::before,table.cards td:nth-child(6)::before{content:none}
+  table.cards td:nth-child(7),table.cards td:nth-child(8),table.cards td:nth-child(9),table.cards td:nth-child(11){grid-column:1/-1}
+  table.cards td:empty{display:none}
+  table.cards td input{width:100%!important;font-size:16px;padding:9px 10px}
+  table.cards .res{min-width:0}
+  table.cards td[colspan]{grid-column:1/-1}
+}
+#msg{position:sticky;top:0;z-index:20}#msg:empty{display:none}
 #splash{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:linear-gradient(135deg,#3d2fa0,#1d1554);color:#fff;transition:opacity .45s ease}
 #splash.out{opacity:0;pointer-events:none}
 #splash .sp{display:grid;justify-items:center;gap:14px;text-align:center}
@@ -103,6 +123,85 @@ textarea{min-height:90px;font-family:var(--f-num);font-size:12px}
 <script>if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
 </head>
 <body>
+<style>
+#pinLock{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:linear-gradient(135deg,#3d2fa0,#1d1554);color:#fff;padding:16px}
+#pinLock[hidden]{display:none!important}
+#pinLock .pb{width:min(360px,100%);display:grid;gap:12px;text-align:center}
+#pinLock h2{margin:0;font-size:22px}
+#pinLock p{margin:0;font-size:14px;opacity:.9}
+#pinLock input{font:inherit;font-size:28px;letter-spacing:.5em;text-align:center;padding:10px;border-radius:10px;border:2px solid #f2c400;background:#fff;color:#1f1b33;width:100%}
+#pinLock button{font:inherit;font-weight:700;font-size:16px;border-radius:10px;border:0;padding:12px;background:#f2c400;color:#1f1b33;cursor:pointer}
+#pinLock button.lnk{background:transparent;color:#fff;text-decoration:underline;font-weight:500;font-size:14px;padding:4px}
+#pinLock .err{color:#ffb4a8;font-weight:700;min-height:1.2em}
+#pinLock .code{font-family:ui-monospace,Menlo,monospace;font-size:26px;letter-spacing:.15em;background:#fff;color:#342787;border-radius:10px;padding:10px}
+</style>
+<div id="pinLock" hidden role="dialog" aria-modal="true" aria-labelledby="pinT"><div class="pb">
+  <h2 id="pinT">Ayaan</h2><p id="pinP"></p>
+  <div id="pinCodeBox" class="code" hidden></div>
+  <input id="pinIn" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Code PIN">
+  <input id="pinIn2" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Confirmer le code PIN" hidden>
+  <div class="err" id="pinErr" aria-live="assertive"></div>
+  <button type="button" id="pinOk">Valider</button>
+  <button type="button" class="lnk" id="pinForgot">Code PIN oublié ?</button>
+</div></div>
+<script>
+/* Ayaan : verrouillage par code PIN (4 à 6 chiffres). Le PIN n'est jamais stocké en clair.
+   Un code de secours, affiché une seule fois à la création, permet de choisir un nouveau PIN sans perdre les données. */
+(function(){
+const K='ayaan.pin.v1',IDLE=10*60*1000,AWAY=5*60*1000;
+const $=id=>document.getElementById(id);
+const get=()=>{try{return JSON.parse(localStorage.getItem(K)||'null')}catch(e){return null}};
+const set=v=>{try{localStorage.setItem(K,JSON.stringify(v));return true}catch(e){return false}};
+const rnd=n=>{const a=new Uint8Array(n);crypto.getRandomValues(a);return [...a].map(b=>b.toString(16).padStart(2,'0')).join('')};
+async function h(salt,txt){const d=new TextEncoder().encode(salt+'|'+txt);
+  if(crypto.subtle){let b=await crypto.subtle.digest('SHA-256',d);for(let i=0;i<999;i++)b=await crypto.subtle.digest('SHA-256',new Uint8Array([...new Uint8Array(b),...d]));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+  let x=5381;for(let r=0;r<2000;r++)for(const c of d)x=((x*33)^c^r)>>>0;return 'f'+x.toString(16)}
+const recCode=()=>{const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789';const a=new Uint8Array(8);crypto.getRandomValues(a);const s=[...a].map(b=>A[b%A.length]).join('');return s.slice(0,4)+'-'+s.slice(4)};
+let mode='',fails=0,waitUntil=0,last=Date.now(),hiddenAt=0,newPin='';
+const L=$('pinLock'),I=$('pinIn'),I2=$('pinIn2'),E=$('pinErr'),P=$('pinP'),OK=$('pinOk'),F=$('pinForgot'),CB=$('pinCodeBox');
+function show(m){mode=m;L.hidden=false;E.textContent='';I.value='';I2.value='';I.hidden=false;I2.hidden=true;CB.hidden=true;F.hidden=m!=='unlock';OK.textContent='Valider';
+  I.setAttribute('aria-label','Code PIN');
+  if(m==='unlock'){P.textContent='Entrez votre code PIN pour ouvrir l\'application.'}
+  else if(m==='create'){P.textContent='Protégez les données des patients : choisissez un code PIN de 4 à 6 chiffres, puis confirmez-le.';I2.hidden=false}
+  else if(m==='recover'){P.textContent='Entrez le code de secours noté lors de la création du PIN (ex. ABCD-1234).';I.removeAttribute('inputmode');I.type='text';I.maxLength=9;I.setAttribute('aria-label','Code de secours')}
+  if(m!=='recover'){I.type='password';I.maxLength=6;I.setAttribute('inputmode','numeric')}
+  setTimeout(()=>I.focus(),50)}
+function hide(){L.hidden=true;mode='';last=Date.now();try{sessionStorage.setItem('ayaan.unl',String(last))}catch(e){}}
+async function submit(){
+  const cfg=get();
+  if(mode==='unlock'){
+    if(Date.now()<waitUntil){E.textContent='Trop d\'essais : patientez '+Math.ceil((waitUntil-Date.now())/1000)+' s.';return}
+    if(cfg&&await h(cfg.s,I.value)===cfg.h){fails=0;hide()}else{fails++;I.value='';E.textContent='Code PIN incorrect.';if(fails>=5){waitUntil=Date.now()+30000;fails=0;E.textContent='5 essais incorrects : patientez 30 s.'}}
+  }else if(mode==='create'){
+    const a=I.value.trim(),b=I2.value.trim();
+    if(!/^\d{4,6}$/.test(a)){E.textContent='Le code PIN doit contenir 4 à 6 chiffres.';return}
+    if(/^(\d)\1+$/.test(a)||'0123456789'.includes(a)||'9876543210'.includes(a)){E.textContent='Code trop facile à deviner (ex. 0000, 1234) : choisissez-en un autre.';return}
+    if(a!==b){E.textContent='Les deux codes ne sont pas identiques.';I2.value='';return}
+    newPin=a;const keep=cfg&&cfg.rh?cfg:null;const s=rnd(16);
+    if(keep){set({s,h:await h(s,a),rs:keep.rs,rh:keep.rh});hide();if(window.ayaanPinMsg)window.ayaanPinMsg('Nouveau code PIN enregistré.');return}
+    const rc=recCode(),rs=rnd(16);set({s,h:await h(s,a),rs,rh:await h(rs,rc)});
+    mode='showcode';P.textContent='Code PIN enregistré. Notez ce code de secours sur papier et gardez-le en lieu sûr : il permet de choisir un nouveau PIN si vous oubliez le vôtre, sans perdre les données.';
+    CB.textContent=rc;CB.hidden=false;I.hidden=true;I2.hidden=true;E.textContent='';OK.textContent='J\'ai noté le code de secours';F.hidden=true;OK.focus();
+  }else if(mode==='showcode'){hide()}
+  else if(mode==='change'){if(cfg&&await h(cfg.s,I.value)===cfg.h){show('create');P.textContent='Choisissez le nouveau code PIN, puis confirmez-le.'}else{E.textContent='Code PIN incorrect.';I.value=''}}
+  else if(mode==='recover'){
+    const v=I.value.trim().toUpperCase().replace(/\s/g,'');const vv=v.includes('-')?v:v.slice(0,4)+'-'+v.slice(4);
+    if(cfg&&await h(cfg.rs,vv)===cfg.rh){show('create');P.textContent='Code de secours accepté. Choisissez un nouveau code PIN, puis confirmez-le.'}else{E.textContent='Code de secours incorrect.'}
+  }
+}
+OK.onclick=submit;
+[I,I2].forEach(x=>x.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(x===I&&!I2.hidden&&!I2.value)I2.focus();else submit()}}));
+F.onclick=()=>show('recover');
+window.ayaanChangePin=()=>{if(!get())return show('create');show('unlock');mode='change';F.hidden=true;P.textContent='Entrez votre code PIN actuel.'};
+window.ayaanLock=()=>{if(get())show('unlock')};
+['pointerdown','keydown','scroll','touchstart'].forEach(ev=>addEventListener(ev,()=>{last=Date.now()},{passive:true,capture:true}));
+setInterval(()=>{if(!mode&&get()&&Date.now()-last>IDLE)show('unlock')},15000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)hiddenAt=Date.now();else if(!mode&&get()&&hiddenAt&&Date.now()-hiddenAt>AWAY)show('unlock')});
+addEventListener('pagehide',()=>{try{if(!mode)sessionStorage.setItem('ayaan.unl',String(last))}catch(e){}});
+(function(){let u=0;try{u=+sessionStorage.getItem('ayaan.unl')||0}catch(e){}if(get()&&u&&Date.now()-u<IDLE)return;show(get()?'unlock':'create')})();
+})();
+</script>
+
 
 <div id="splash" role="presentation"><div class="sp"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" class="logo" aria-hidden="true">
   <defs>
@@ -133,7 +232,7 @@ textarea{min-height:90px;font-family:var(--f-num);font-size:12px}
     </div></div>
     <div class="row">
       <input type="file" id="file" accept=".xlsx,.csv" hidden>
-      <button class="btn ghost" id="btnRep" type="button">Envoyer au centralisateur</button>
+      <button class="btn ghost" type="button" onclick="ayaanLock()" title="Verrouiller l'application">Verrouiller</button><a class="btn ghost" href="central.html" style="text-decoration:none">Ouvrir le Centralisateur</a><button class="btn ghost" id="btnRep" type="button">Envoyer au centralisateur</button>
       <button class="btn" id="btnImport">Importer l'export Tier.Net</button>
     </div>
   </header>
@@ -161,7 +260,7 @@ textarea{min-height:90px;font-family:var(--f-num);font-size:12px}
       </div>
     </div>
     <div class="chips" id="chips" role="group" aria-label="Filtrer par statut"></div>
-    <div class="tw"><table><thead><tr><th>N° dossier</th><th>ESS</th><th>Début ARV</th><th>Dernier prélèvement CV</th><th>Date probable de prélèvement</th><th>Statut</th><th>Date effective du prélèvement</th><th>Résultat CV</th><th>Date retour du résultat</th><th>Prochain RDV CV</th><th>Commentaire</th><th class="num">Retard (j)</th></tr></thead><tbody id="tb"></tbody></table></div>
+    <div class="tw"><table class="cards"><thead><tr><th>N° dossier</th><th>ESS</th><th>Début ARV</th><th>Dernier prélèvement CV</th><th>Date probable de prélèvement</th><th>Statut</th><th>Date effective du prélèvement</th><th>Résultat CV</th><th>Date retour du résultat</th><th>Prochain RDV CV</th><th>Commentaire</th><th class="num">Retard (j)</th></tr></thead><tbody id="tb"></tbody></table></div>
     <div class="pager"><span class="muted" id="pinfo"></span><button class="btn ghost" id="prev">Précédent</button><button class="btn ghost" id="next">Suivant</button></div>
   </section>
 
@@ -196,18 +295,18 @@ textarea{min-height:90px;font-family:var(--f-num);font-size:12px}
     <p class="muted"><b>Actif (MER)</b> : date de référence ≤ date du prochain RDV + 28 jours ; décédés, transférés et patients sans date de début TARV exclus. <b>Date probable</b> : sans CV = début TARV + 6 mois ; CV faite dans les 12 premiers mois = début TARV + 12 mois ; ensuite dernière CV + 12 mois ; CV ≥ 1 000 copies = dernière CV + 3 mois. Une date antérieure au début de l'année fiscale devient ce premier jour : le patient reste attendu chaque mois jusqu'au prélèvement. <b>Réalisé</b> : nouvelle CV dans Tier.Net pendant la période (la date effective se remplit alors seule, marquée « auto · Tier.Net ») ou date saisie par l'IT si l'export n'est pas à jour. <b>Prochain RDV CV</b> : dès qu'un prélèvement est fait (Tier.Net ou saisi), la date du prélèvement suivant est calculée selon les mêmes règles (ex. patient sous ARV depuis 2017 prélevé le 06/10/2026 : prochain RDV CV le 06/10/2027) ; elle est à communiquer au patient. <b>En retard</b> : date probable dépassée sans prélèvement ; le patient est signalé automatiquement pour le tracking actif. Vert ≥ 95 %, jaune 85 à 94 %, rouge &lt; 85 %.</p>
     <p class="muted">Les dates saisies sont gardées par N° dossier : elles ne se décalent pas quand vous importez un nouvel export. Elles restent dans ce navigateur, sur cet appareil. Faites une sauvegarde régulière.</p>
     <details><summary>Sauvegarder ou restaurer les dates saisies</summary>
-      <div class="row" style="margin-top:8px"><button class="btn ghost" id="btnBack">Copier la sauvegarde</button><button class="btn ghost" id="btnRest">Restaurer depuis le texte collé</button><button class="btn ghost" id="btnBkDl" hidden>Enregistrer la sauvegarde (fichier)</button><input type="file" id="bkFile" accept=".json,.txt" hidden><button class="btn ghost" id="btnBkUp" hidden>Restaurer depuis un fichier</button><button class="btn ghost" id="btnClear">Effacer les données de cet appareil</button></div>
+      <div class="row" style="margin-top:8px"><button class="btn ghost" id="btnBack">Copier la sauvegarde</button><button class="btn ghost" id="btnRest">Restaurer depuis le texte collé</button><button class="btn ghost" id="btnBkDl" hidden>Enregistrer la sauvegarde (fichier)</button><input type="file" id="bkFile" accept=".json,.txt" hidden><button class="btn ghost" id="btnBkUp" hidden>Restaurer depuis un fichier</button><button class="btn ghost" id="btnClear">Effacer les données de cet appareil</button><button class="btn ghost" type="button" onclick="ayaanChangePin()">Changer le code PIN</button></div>
       <label class="f" for="bk" style="margin-top:8px">Texte de sauvegarde (collez-le dans un courriel ou un fichier texte pour le garder)<textarea id="bk"></textarea></label>
       <div id="bkmsg" class="muted"></div>
     </details>
   </section>
 </div>
 
-<script>(function(){var s=document.getElementById('splash');if(!s)return;var t=matchMedia('(prefers-reduced-motion: reduce)').matches?500:1500;function h(){s.classList.add('out');setTimeout(function(){s.remove()},500)}setTimeout(h,t);s.addEventListener('click',h)})();</script>
+<script>(function(){var s=document.getElementById('splash');if(!s)return;var t=matchMedia('(prefers-reduced-motion: reduce)').matches?300:900;function h(){s.classList.add('out');setTimeout(function(){s.remove()},500)}setTimeout(h,t);s.addEventListener('click',h)})();</script>
 <script>
 (function(){
 const $=id=>document.getElementById(id);
-const K_DATA='cvasf.data.v1',K_SAIS='cvasf.saisies.v1',K_MAN='cvasf.manuels.v1';
+const K_DATA='cvasf.data.v1',K_SAIS='cvasf.saisies.v1',K_MAN='cvasf.manuels.v1',K_BK='cvasf.dernsauv.v1';
 const store={get(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 const DAY=864e5;
 const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
@@ -230,6 +329,7 @@ function toNum(v){if(v==null||v==='')return null;if(typeof v==='number')return v
 
 function parseRes(v){if(v==null||v==='')return null;if(typeof v==='number')return v;const t=String(v).trim();if(!t)return null;
   if(/^(tnd|nd|ind[eé]tect|non d[eé]tect|undetect|ld|<\s*ld)/i.test(t))return 0;
+  if(/^\d{1,3}([.,\s ]\d{3})+(\s*(cp|copies)\b.*)?$/i.test(t))return +t.replace(/\s*(cp|copies).*$/i,'').replace(/\D/g,'');
   const m=t.match(/^<\s*([\d\s.,]+)/);if(m){const n=parseFloat(m[1].replace(/\s/g,'').replace(',','.'));return isNaN(n)?null:n-0.5}
   return toNum(t)}
 function fmtRes(v){if(v==null)return '';if(v===0)return 'TND';if(v%1!==0)return '< '+Math.ceil(v);return Math.round(v).toLocaleString('fr-FR')+' cp/ml'}
@@ -333,7 +433,7 @@ function compute(ref,fy,per){
     const deb=fromIso(r.deb),rdv=fromIso(r.rdv),cvd=fromIso(r.cvd),key=r.ess+'|'+r.dos,s=SAIS[key]||{};
     const sd=fromIso(s.d);let act;
     const st=norm(r.sta);
-    if(!deb)act='Non : pré-TARV';else if(st.includes('deced')||st.includes('transf'))act='Non : décédé / transféré';else if(!rdv)act='Non : sans date de RDV';else act=(ref<=new Date(rdv.getTime()+28*DAY))?'Oui':'Non : IIT (> 28 j)';
+    if(!deb)act='Non : pré-TARV';else if(st.includes('deced')||st.includes('transf'))act='Non : décédé / transféré';else if(st.includes('perdu'))act='Non : perdu de vue';else if(!rdv)act='Non : sans date de RDV';else act=(ref<=new Date(rdv.getTime()+28*DAY))?'Oui':'Non : IIT (> 28 j)';
     const cvT=cvd?cvd.getTime():0, sT=sd?sd.getTime():0, last=Math.max(cvT,sT);
     const lastD=last?new Date(last):null;
     const tnInP=cvT>=PS&&cvT<=PE, saisieNew=sT>cvT;
@@ -362,6 +462,7 @@ function compute(ref,fy,per){
 const inP=(p,x)=>x.act==='Oui'&&((x.last>=p.s.getTime()&&x.last<=p.e.getTime())||(x.prob&&x.prob<=p.e&&x.last<p.s.getTime()));
 const pvlsD=(x,ref)=>x.act==='Oui'&&x.res!=null&&x.resD&&x.resD>=addM(ref,-12)&&x.resD<=ref;
 function supp(list,ref){const d=list.filter(x=>pvlsD(x,ref));return{d:d.length,n:d.filter(x=>x.res<1000).length,u:d.filter(x=>x.res<50).length,low:d.filter(x=>x.res>=50&&x.res<1000).length,cra:d.filter(x=>x.res>=1000).length}}
+function tat(list,ref){const v=list.filter(x=>x.act==='Oui'&&x.resRet&&x.resD&&x.resRet>=x.resD&&x.resRet>=addM(ref,-12)).map(x=>Math.round((x.resRet-x.resD)/DAY)).sort((a,b)=>a-b);return{n:v.length,med:v.length?v[Math.floor((v.length-1)/2)]:null}}
 const doneP=(p,x)=>x.act==='Oui'&&x.last>=p.s.getTime()&&x.last<=p.e.getTime();
 const pctCls=v=>v==null?'':(v>=.95?'pct-ok':v>=.85?'pct-warn':'pct-bad');
 const pctTxt=v=>v==null?'–':(v*100).toFixed(1).replace('.',',')+' %';
@@ -396,6 +497,8 @@ function render(){
   $('tiles').innerHTML=[['v',act.length,'Patients actifs (MER)'],['j',c('À prélever ce mois'),'À prélever ce mois'],['r',nLate,'En retard : tracking actif'],['o',rows.filter(x=>x.stat.startsWith('Prélevé')).length,'Prélevés dans la période (Tier.Net ou saisis)']].map(t=>`<div class="tile ${t[0]}"><b>${t[1].toLocaleString('fr-FR')}</b><span>${t[2]}</span></div>`).join('');
   const SP=supp(rows,ref),spv=SP.d?SP.n/SP.d:null;
   $('tiles').innerHTML+=`<div class="tile"><b class="${pctCls(spv)}">${pctTxt(spv)}</b><span>Suppression virale (&lt; 1 000) : ${SP.n} / ${SP.d} CV des 12 derniers mois · &lt; 50 : ${SP.u}</span></div><div class="tile r"><b>${SP.cra}</b><span>CV ≥ 1 000 : CRA à faire · bas niveau 50–999 : ${SP.low}</span></div>`;
+  const TT=tat(rows,ref);$('tiles').innerHTML+=`<div class="tile ${TT.med!=null&&TT.med>30?'r':'v'}"><b>${TT.med==null?'–':TT.med+' j'}</b><span>Délai médian de retour des résultats (${TT.n} résultat(s) avec date de retour, 12 derniers mois)</span></div>`;
+  const nS=Object.keys(SAIS).length,lb=fromIso(store.get(K_BK));if(nS&&(!lb||(today()-lb)/DAY>14)&&!$('msg').innerHTML)showMsg('info',`${nS} saisie(s) sur cet appareil ${lb?'et dernière sauvegarde le '+fr(lb):'sans aucune sauvegarde'} : pensez à « Enregistrer la sauvegarde » (section Règles et sauvegarde).`);
   const att=rows.filter(x=>inP(per,x)),dn=att.filter(x=>doneP(per,x)),pv=att.length?dn.length/att.length:null;
   $('period').innerHTML=`<h2>${esc(per.lab)}${essSel?' · '+esc(essSel):''}</h2><div><span class="n">${att.length}</span><span class="l">attendus</span></div><div><span class="n">${dn.length}</span><span class="l">réalisés</span></div><div><span class="n">${pctTxt(pv)}</span><span class="l">de réalisation</span></div><div><span class="n">${att.length-dn.length}</span><span class="l">non réalisés</span></div>`;
   // chips
@@ -421,6 +524,7 @@ function render(){
     <td class="num">${x.nextRdv?'<b>'+fr(x.nextRdv)+'</b><br><span class="muted">à communiquer</span>':''}</td>
     <td>${x.act==='Oui'?`<input type="text" id="c_${esc(x.key)}" data-k="${esc(x.key)}" data-t="c" value="${esc(x.com)}" aria-label="Commentaire ${esc(x.dos)}">`:''}</td>
     <td class="num">${x.ret??''}</td></tr>`).join('')||`<tr><td colspan="12" class="muted">Aucun patient pour ce filtre.</td></tr>`;
+  {const H=[...document.querySelectorAll('table.cards thead th')].map(t=>t.textContent);document.querySelectorAll('#tb tr').forEach(tr=>[...tr.children].forEach((td,i)=>{if(!td.hasAttribute('colspan'))td.dataset.l=H[i]||''}))}
   $('pinfo').textContent=`Page ${page+1} / ${pages}`;$('prev').disabled=page===0;$('next').disabled=page>=pages-1;
   const trs=(list,body)=>{$(body).innerHTML=list.map(p=>{const a=rows.filter(x=>inP(p,x)),d=a.filter(x=>doneP(p,x)),v=a.length?d.length/a.length:null;return `<tr><td>${esc(p.lab)}</td><td class="num">${a.length}</td><td class="num">${d.length}</td><td class="num ${pctCls(v)}">${pctTxt(v)}</td></tr>`}).join('')};
   trs(ps.filter(p=>p.type==='m'),'tbM');trs(ps.filter(p=>p.type==='q'),'tbQ');
@@ -436,18 +540,27 @@ $('q').addEventListener('input',()=>{page=0;render()});
 $('chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;statusFilter=b.dataset.f;EDITED.clear();page=0;render()});
 $('prev').onclick=()=>{page--;render()};$('next').onclick=()=>{page++;render()};
 $('tb').addEventListener('change',e=>{const t=e.target;if(!t.dataset.k)return;const k=t.dataset.k;const s=SAIS[k]||{};
-  if(t.dataset.t==='d'){if(t.value&&fromIso(t.value)>today()){t.value=s.d||'';showMsg('bad','La date effective ne peut pas être dans le futur.');return}s.d=t.value||undefined}
+  const row0=LAST.find(x=>x.key===k);
+  if(t.dataset.t==='d'){if(t.value&&fromIso(t.value)>today()){t.value=s.d||'';showMsg('bad','La date effective ne peut pas être dans le futur.');return}
+    if(t.value&&row0&&row0.deb&&fromIso(t.value)<row0.deb){t.value=s.d||'';showMsg('bad','La date effective est antérieure au début du TARV : vérifiez.');return}
+    if(t.value&&row0&&row0.cvd&&fromIso(t.value)<=row0.cvd){t.value=s.d||'';showMsg('bad','Cette date n\'est pas postérieure à la dernière CV déjà connue dans Tier.Net ('+fr(row0.cvd)+') : elle ne serait pas prise en compte.');return}
+    s.d=t.value||undefined}
   else if(t.dataset.t==='r'){const v=t.value.trim();const row=LAST.find(x=>x.key===k);if(v&&row&&!row.lastD&&!s.d){t.value='';showMsg('bad','Saisissez d\'abord la date effective du prélèvement, puis le résultat.');return}if(v&&parseRes(v)==null){t.value=s.r||'';showMsg('bad','Résultat non reconnu : saisissez un nombre (ex. 40 ou 1500), TND ou < 50.');return}s.r=v||undefined;
     if(v){const pv=parseRes(v),rc=resCls(pv);const dos=k.split('|').slice(1).join('|');showMsg(pv>=1000?'bad':'info',`Résultat ${esc(fmtRes(pv))} enregistré pour ${esc(dos)} : ${rc.t}.`+(pv>=1000?' Faire le CRA et prévoir une CV de contrôle dans 3 mois.':''))}}
-  else if(t.dataset.t==='rd'){if(t.value&&fromIso(t.value)>today()){t.value=s.rd||'';showMsg('bad','La date de retour ne peut pas être dans le futur.');return}s.rd=t.value||undefined}
+  else if(t.dataset.t==='rd'){if(t.value&&fromIso(t.value)>today()){t.value=s.rd||'';showMsg('bad','La date de retour ne peut pas être dans le futur.');return}
+    if(t.value&&row0&&row0.lastD&&fromIso(t.value)<row0.lastD){t.value=s.rd||'';showMsg('bad','La date de retour du résultat est antérieure à la date du prélèvement ('+fr(row0.lastD)+') : vérifiez.');return}
+    s.rd=t.value||undefined}
   else s.c=t.value||undefined;
   if(!s.d&&!s.c&&!s.r&&!s.rd)delete SAIS[k];else SAIS[k]=s;EDITED.add(k);
   if(t.dataset.t==='d'&&t.value){const dos=k.split('|').slice(1).join('|');showMsg('info',`Prélèvement du ${fr(fromIso(t.value))} enregistré pour ${esc(dos)}. Prochain RDV CV calculé : voir la colonne « Prochain RDV CV ».`)}
   if(!store.set(K_SAIS,SAIS))showMsg('bad','Cet appareil n\'a pas pu enregistrer la saisie. Copiez la sauvegarde pour ne pas la perdre.');
-  render();});
+  const fk=t.dataset.k,ft=t.dataset.t;render();const el=document.querySelector(`#tb [data-k="${CSS.escape(fk)}"][data-t="${ft}"]`);if(el){const ins=[...document.querySelectorAll('#tb input')];const i=ins.indexOf(el);(KEYNAV&&ins[i+1]?ins[i+1]:el).focus({preventScroll:true})}KEYNAV=false;});
+let KEYNAV=false;$('tb').addEventListener('keydown',e=>{if(e.key==='Tab'&&!e.shiftKey&&e.target.matches('input'))KEYNAV=true});
 $('btnCopy').onclick=async()=>{const lines=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV'].join('\t')].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):''].join('\t')));const txt=lines.join('\n');
   try{await navigator.clipboard.writeText(txt);showMsg('info',`${LAST.length} lignes copiées. Collez-les dans Excel (Ctrl + V).`)}catch(e){$('bk').value=txt;$('bk').select();showMsg('info','Copie automatique refusée : la liste est dans la zone de texte « Sauvegarder ou restaurer », sélectionnée. Faites Ctrl + C.')}};
-$('btnBack').onclick=async()=>{const txt=JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN});$('bk').value=txt;try{await navigator.clipboard.writeText(txt);$('bkmsg').textContent=`Sauvegarde copiée (${Object.keys(SAIS).length} saisies). Collez-la dans un fichier texte ou un courriel.`}catch(e){$('bk').select();$('bkmsg').textContent='Le texte est sélectionné : faites Ctrl + C.'}};
+window.ayaanPinMsg=t=>showMsg('info',t);
+const markBk=()=>store.set(K_BK,iso(today()));
+$('btnBack').onclick=async()=>{markBk();const txt=JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN});$('bk').value=txt;try{await navigator.clipboard.writeText(txt);$('bkmsg').textContent=`Sauvegarde copiée (${Object.keys(SAIS).length} saisies). Collez-la dans un fichier texte ou un courriel.`}catch(e){$('bk').select();$('bkmsg').textContent='Le texte est sélectionné : faites Ctrl + C.'}};
 $('btnRest').onclick=()=>{try{const o=JSON.parse($('bk').value);if(o.type!=='cvasf-saisies')throw 0;SAIS=Object.assign({},SAIS,o.saisies);store.set(K_SAIS,SAIS);if(o.manuels){MAN=Object.assign({},MAN,o.manuels);store.set(K_MAN,MAN);fillEss()}$('bkmsg').textContent=`${Object.keys(o.saisies).length} saisies restaurées.`;render()}catch(e){$('bkmsg').textContent='Texte non reconnu : collez exactement le texte de sauvegarde copié.'}};
 let armed=false;$('btnClear').onclick=()=>{if(!armed){armed=true;$('btnClear').textContent='Confirmer : tout effacer';$('bkmsg').textContent='Cliquez encore pour effacer l\'export et les dates saisies de cet appareil.';return}
   store.del(K_DATA);store.del(K_SAIS);store.del(K_MAN);SAIS={};MAN={};DATA=sample();armed=false;$('btnClear').textContent='Effacer les données de cet appareil';$('bkmsg').textContent='Données effacées.';fillEss();render()};
@@ -457,7 +570,7 @@ if(OFFLINE){['btnDl','btnBkDl','btnBkUp'].forEach(id=>$(id).hidden=false);$('off
 $('btnDl').onclick=()=>{const rows=[['N° dossier','ESS','Début ARV','Dernier prélèvement CV','Date probable de prélèvement','Statut','Date effective','Résultat CV','Interprétation','Date retour du résultat','Prochain RDV CV','Commentaire','Retard (j)','Prochain RDV ARV']].concat(LAST.map(x=>[x.dos,x.ess,fr(x.deb),fr(x.cvd),fr(x.due),x.stat,fr(x.eff),fmtRes(x.res),(resCls(x.res)||{t:''}).t,fr(x.resRet),fr(x.nextRdv),x.com,x.ret??'',x.rdv?fr(fromIso(x.rdv)):'']));
   const csv='\uFEFF'+rows.map(r=>r.map(v=>{v=String(v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
   const ess=$('selEss').value||'toutes ESS';dl(`Ayaan Suivi CV - ${ess} - ${iso(today())}.csv`,csv,'text/csv;charset=utf-8');showMsg('info',`${LAST.length} lignes téléchargées (fichier CSV, s'ouvre dans Excel).`)};
-$('btnBkDl').onclick=()=>{dl(`Ayaan Suivi CV - sauvegarde - ${iso(today())}.json`,JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN}),'application/json');$('bkmsg').textContent=`Sauvegarde enregistrée (${Object.keys(SAIS).length} saisies) dans le dossier Téléchargements.`};
+$('btnBkDl').onclick=()=>{markBk();dl(`Ayaan Suivi CV - sauvegarde - ${iso(today())}.json`,JSON.stringify({type:'cvasf-saisies',date:iso(today()),saisies:SAIS,manuels:MAN}),'application/json');$('bkmsg').textContent=`Sauvegarde enregistrée (${Object.keys(SAIS).length} saisies) dans le dossier Téléchargements.`};
 $('btnBkUp').onclick=()=>$('bkFile').click();
 $('bkFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('bk').value=r.result;$('btnRest').click()};r.readAsText(f);e.target.value=''};
 function renderMan(){
@@ -489,7 +602,7 @@ function buildReport(){
     const late=r.filter(x=>x.stat==='En retard').sort((a,b)=>(b.ret||0)-(a.ret||0));
     return{ess:e,actifs:act.length,iit:r.filter(x=>x.act.startsWith('Non : IIT')).length,late:late.length,todo:r.filter(x=>x.stat==='À prélever ce mois').length,
       doneMonth:r.filter(x=>doneP(cur,x)).length,attMonth:r.filter(x=>inP(cur,x)).length,manual:r.filter(x=>x.src==='Saisie manuelle'||x.src==='Export corrigé').length,
-      cvAJour:act.filter(x=>x.lastD&&x.lastD>=addM(ref,-12)).length,months,...(()=>{const q=supp(r,ref);return{pvlsD:q.d,pvlsN:q.n,und:q.u,low:q.low,cra:q.cra,pend:r.filter(x=>x.act==='Oui'&&x.pend).length}})(),
+      cvAJour:act.filter(x=>x.lastD&&x.lastD>=addM(ref,-12)).length,months,...(()=>{const q=supp(r,ref);return{pvlsD:q.d,pvlsN:q.n,und:q.u,low:q.low,cra:q.cra,pend:r.filter(x=>x.act==='Oui'&&x.pend).length,tatMed:tat(r,ref).med}})(),
       lateList:late.slice(0,300).map(x=>({dos:x.dos,due:iso(x.due),ret:x.ret,rdv:x.rdv||''}))}});
   return{type:'ayaan-rapport',v:1,gen:new Date().toISOString(),ref:iso(ref),fy:iso(fy),file:DATA&&DATA.file||'',example:!!(DATA&&DATA.example&&!Object.keys(MAN).length),sites};
 }
@@ -498,6 +611,8 @@ $('btnRep').onclick=async()=>{const r=buildReport();if(r.example){showMsg('bad',
   if(OFFLINE){dl(name,txt,'application/json');showMsg('info',`Rapport enregistré dans Téléchargements (« ${esc(name)} »). Envoyez ce fichier au centralisateur (WhatsApp, courriel ou clé USB).`);return}
   try{await navigator.clipboard.writeText(txt);showMsg('info','Rapport copié. Collez-le dans le centralisateur (zone « Coller un rapport »), ou dans un message.')}catch(e){$('bk').value=txt;$('bk').select();showMsg('info','Copie refusée : le rapport est dans la zone de texte « Sauvegarder ou restaurer », sélectionné. Faites Ctrl + C.')}};
 // init
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+if('serviceWorker' in navigator&&navigator.serviceWorker.controller){navigator.serviceWorker.addEventListener('controllerchange',()=>{if(window.__ayRel)return;window.__ayRel=1;showMsg('info','Nouvelle version d\'Ayaan installée. <button class="btn" type="button" onclick="location.reload()">Recharger</button> (vos données sont conservées).')})}
 const ref0=today();$('dRef').value=iso(ref0);$('dFy').value=iso(defaultFy(ref0));
 DATA=store.get(K_DATA)||sample();
 if(!DATA.example)showMsg('info',`Dernier export chargé : ${esc(DATA.file)} (importé le ${fr(fromIso(DATA.date))}).`);

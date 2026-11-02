@@ -88,6 +88,85 @@ details summary{cursor:pointer;font-weight:600;color:var(--violet)}
 <script>if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
 </head>
 <body>
+<style>
+#pinLock{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:linear-gradient(135deg,#3d2fa0,#1d1554);color:#fff;padding:16px}
+#pinLock[hidden]{display:none!important}
+#pinLock .pb{width:min(360px,100%);display:grid;gap:12px;text-align:center}
+#pinLock h2{margin:0;font-size:22px}
+#pinLock p{margin:0;font-size:14px;opacity:.9}
+#pinLock input{font:inherit;font-size:28px;letter-spacing:.5em;text-align:center;padding:10px;border-radius:10px;border:2px solid #f2c400;background:#fff;color:#1f1b33;width:100%}
+#pinLock button{font:inherit;font-weight:700;font-size:16px;border-radius:10px;border:0;padding:12px;background:#f2c400;color:#1f1b33;cursor:pointer}
+#pinLock button.lnk{background:transparent;color:#fff;text-decoration:underline;font-weight:500;font-size:14px;padding:4px}
+#pinLock .err{color:#ffb4a8;font-weight:700;min-height:1.2em}
+#pinLock .code{font-family:ui-monospace,Menlo,monospace;font-size:26px;letter-spacing:.15em;background:#fff;color:#342787;border-radius:10px;padding:10px}
+</style>
+<div id="pinLock" hidden role="dialog" aria-modal="true" aria-labelledby="pinT"><div class="pb">
+  <h2 id="pinT">Ayaan</h2><p id="pinP"></p>
+  <div id="pinCodeBox" class="code" hidden></div>
+  <input id="pinIn" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Code PIN">
+  <input id="pinIn2" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Confirmer le code PIN" hidden>
+  <div class="err" id="pinErr" aria-live="assertive"></div>
+  <button type="button" id="pinOk">Valider</button>
+  <button type="button" class="lnk" id="pinForgot">Code PIN oublié ?</button>
+</div></div>
+<script>
+/* Ayaan : verrouillage par code PIN (4 à 6 chiffres). Le PIN n'est jamais stocké en clair.
+   Un code de secours, affiché une seule fois à la création, permet de choisir un nouveau PIN sans perdre les données. */
+(function(){
+const K='ayaan.pin.v1',IDLE=10*60*1000,AWAY=5*60*1000;
+const $=id=>document.getElementById(id);
+const get=()=>{try{return JSON.parse(localStorage.getItem(K)||'null')}catch(e){return null}};
+const set=v=>{try{localStorage.setItem(K,JSON.stringify(v));return true}catch(e){return false}};
+const rnd=n=>{const a=new Uint8Array(n);crypto.getRandomValues(a);return [...a].map(b=>b.toString(16).padStart(2,'0')).join('')};
+async function h(salt,txt){const d=new TextEncoder().encode(salt+'|'+txt);
+  if(crypto.subtle){let b=await crypto.subtle.digest('SHA-256',d);for(let i=0;i<999;i++)b=await crypto.subtle.digest('SHA-256',new Uint8Array([...new Uint8Array(b),...d]));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+  let x=5381;for(let r=0;r<2000;r++)for(const c of d)x=((x*33)^c^r)>>>0;return 'f'+x.toString(16)}
+const recCode=()=>{const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789';const a=new Uint8Array(8);crypto.getRandomValues(a);const s=[...a].map(b=>A[b%A.length]).join('');return s.slice(0,4)+'-'+s.slice(4)};
+let mode='',fails=0,waitUntil=0,last=Date.now(),hiddenAt=0,newPin='';
+const L=$('pinLock'),I=$('pinIn'),I2=$('pinIn2'),E=$('pinErr'),P=$('pinP'),OK=$('pinOk'),F=$('pinForgot'),CB=$('pinCodeBox');
+function show(m){mode=m;L.hidden=false;E.textContent='';I.value='';I2.value='';I.hidden=false;I2.hidden=true;CB.hidden=true;F.hidden=m!=='unlock';OK.textContent='Valider';
+  I.setAttribute('aria-label','Code PIN');
+  if(m==='unlock'){P.textContent='Entrez votre code PIN pour ouvrir l\'application.'}
+  else if(m==='create'){P.textContent='Protégez les données des patients : choisissez un code PIN de 4 à 6 chiffres, puis confirmez-le.';I2.hidden=false}
+  else if(m==='recover'){P.textContent='Entrez le code de secours noté lors de la création du PIN (ex. ABCD-1234).';I.removeAttribute('inputmode');I.type='text';I.maxLength=9;I.setAttribute('aria-label','Code de secours')}
+  if(m!=='recover'){I.type='password';I.maxLength=6;I.setAttribute('inputmode','numeric')}
+  setTimeout(()=>I.focus(),50)}
+function hide(){L.hidden=true;mode='';last=Date.now();try{sessionStorage.setItem('ayaan.unl',String(last))}catch(e){}}
+async function submit(){
+  const cfg=get();
+  if(mode==='unlock'){
+    if(Date.now()<waitUntil){E.textContent='Trop d\'essais : patientez '+Math.ceil((waitUntil-Date.now())/1000)+' s.';return}
+    if(cfg&&await h(cfg.s,I.value)===cfg.h){fails=0;hide()}else{fails++;I.value='';E.textContent='Code PIN incorrect.';if(fails>=5){waitUntil=Date.now()+30000;fails=0;E.textContent='5 essais incorrects : patientez 30 s.'}}
+  }else if(mode==='create'){
+    const a=I.value.trim(),b=I2.value.trim();
+    if(!/^\d{4,6}$/.test(a)){E.textContent='Le code PIN doit contenir 4 à 6 chiffres.';return}
+    if(/^(\d)\1+$/.test(a)||'0123456789'.includes(a)||'9876543210'.includes(a)){E.textContent='Code trop facile à deviner (ex. 0000, 1234) : choisissez-en un autre.';return}
+    if(a!==b){E.textContent='Les deux codes ne sont pas identiques.';I2.value='';return}
+    newPin=a;const keep=cfg&&cfg.rh?cfg:null;const s=rnd(16);
+    if(keep){set({s,h:await h(s,a),rs:keep.rs,rh:keep.rh});hide();if(window.ayaanPinMsg)window.ayaanPinMsg('Nouveau code PIN enregistré.');return}
+    const rc=recCode(),rs=rnd(16);set({s,h:await h(s,a),rs,rh:await h(rs,rc)});
+    mode='showcode';P.textContent='Code PIN enregistré. Notez ce code de secours sur papier et gardez-le en lieu sûr : il permet de choisir un nouveau PIN si vous oubliez le vôtre, sans perdre les données.';
+    CB.textContent=rc;CB.hidden=false;I.hidden=true;I2.hidden=true;E.textContent='';OK.textContent='J\'ai noté le code de secours';F.hidden=true;OK.focus();
+  }else if(mode==='showcode'){hide()}
+  else if(mode==='change'){if(cfg&&await h(cfg.s,I.value)===cfg.h){show('create');P.textContent='Choisissez le nouveau code PIN, puis confirmez-le.'}else{E.textContent='Code PIN incorrect.';I.value=''}}
+  else if(mode==='recover'){
+    const v=I.value.trim().toUpperCase().replace(/\s/g,'');const vv=v.includes('-')?v:v.slice(0,4)+'-'+v.slice(4);
+    if(cfg&&await h(cfg.rs,vv)===cfg.rh){show('create');P.textContent='Code de secours accepté. Choisissez un nouveau code PIN, puis confirmez-le.'}else{E.textContent='Code de secours incorrect.'}
+  }
+}
+OK.onclick=submit;
+[I,I2].forEach(x=>x.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(x===I&&!I2.hidden&&!I2.value)I2.focus();else submit()}}));
+F.onclick=()=>show('recover');
+window.ayaanChangePin=()=>{if(!get())return show('create');show('unlock');mode='change';F.hidden=true;P.textContent='Entrez votre code PIN actuel.'};
+window.ayaanLock=()=>{if(get())show('unlock')};
+['pointerdown','keydown','scroll','touchstart'].forEach(ev=>addEventListener(ev,()=>{last=Date.now()},{passive:true,capture:true}));
+setInterval(()=>{if(!mode&&get()&&Date.now()-last>IDLE)show('unlock')},15000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)hiddenAt=Date.now();else if(!mode&&get()&&hiddenAt&&Date.now()-hiddenAt>AWAY)show('unlock')});
+addEventListener('pagehide',()=>{try{if(!mode)sessionStorage.setItem('ayaan.unl',String(last))}catch(e){}});
+(function(){let u=0;try{u=+sessionStorage.getItem('ayaan.unl')||0}catch(e){}if(get()&&u&&Date.now()-u<IDLE)return;show(get()?'unlock':'create')})();
+})();
+</script>
+
 <div id="splash" role="presentation"><div class="sp"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" class="logo" aria-hidden="true">
   <defs>
     <linearGradient id="ag" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4433b0"/><stop offset="1" stop-color="#231a66"/></linearGradient>
@@ -118,7 +197,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--violet)}
     </div></div>
     <div class="row">
       <input type="file" id="files" accept=".json,.txt" multiple hidden>
-      <button class="btn" id="btnImp" type="button">Importer des rapports</button>
+      <button class="btn ghost" type="button" onclick="ayaanLock()">Verrouiller</button><a class="btn ghost" href="index.html" style="text-decoration:none">Ouvrir Ayaan Suivi CV</a><button class="btn" id="btnImp" type="button">Importer des rapports</button>
     </div>
   </header>
   <div id="msg"></div>
@@ -159,7 +238,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--violet)}
       <div class="row" style="margin-top:6px"><button class="btn ghost" id="btnPaste" type="button">Ajouter ce rapport</button></div>
     </details>
     <details><summary>Historique des rapports</summary><div class="tw" style="margin-top:8px;max-height:300px"><table><thead><tr><th>ESS</th><th>Date du rapport</th><th>Reçu le</th><th class="num">Actifs</th><th class="num">En retard</th><th></th></tr></thead><tbody id="tbH"></tbody></table></div></details>
-    <div class="row"><button class="btn ghost" id="btnSave" type="button">Enregistrer une sauvegarde (fichier)</button><button class="btn ghost" id="btnRestore" type="button">Restaurer une sauvegarde</button><input type="file" id="bkf" accept=".json" hidden><button class="btn ghost" id="btnClear" type="button">Tout effacer</button></div>
+    <div class="row"><button class="btn ghost" id="btnSave" type="button">Enregistrer une sauvegarde (fichier)</button><button class="btn ghost" id="btnRestore" type="button">Restaurer une sauvegarde</button><input type="file" id="bkf" accept=".json" hidden><button class="btn ghost" id="btnClear" type="button">Tout effacer</button><button class="btn ghost" type="button" onclick="ayaanChangePin()">Changer le code PIN</button></div>
     <div class="muted" id="bmsg"></div>
   </section>
 </div>
@@ -235,7 +314,7 @@ function render(){
   const T=L.reduce((a,x)=>{const m=mOf(x);a.act+=x.actifs;a.att+=m.att;a.real+=m.real;a.late+=x.late;a.old+=((today()-fromIso(x.ref))/DAY>stale)?1:0;a.pD+=x.pvlsD||0;a.pN+=x.pvlsN||0;a.cra+=x.cra||0;a.low+=x.low||0;return a},{act:0,att:0,real:0,late:0,old:0,pD:0,pN:0,cra:0,low:0});
   const sp=pct(T.pN,T.pD);
   const tp=pct(T.real,T.att);
-  $('tiles').innerHTML=[['',L.length,'ESS suivies'],['',T.act.toLocaleString('fr-FR'),'Patients actifs (MER)'],['',T.att.toLocaleString('fr-FR'),'Attendus · '+(mk?mLab(mk):'')],['o',T.real.toLocaleString('fr-FR'),'Réalisés'],['',pctTxt(tp),'% de réalisation'],['r',T.late.toLocaleString('fr-FR'),'En retard : tracking actif'],['',pctTxt(sp),'Suppression virale (< 1 000) : '+T.pN.toLocaleString('fr-FR')+' / '+T.pD.toLocaleString('fr-FR'),pctCls(sp)],['r',T.cra.toLocaleString('fr-FR'),'CV ≥ 1 000 : CRA · bas niveau 50–999 : '+T.low],['r',T.old,'Rapports anciens (> '+stale+' j)']]
+  $('tiles').innerHTML=[['',L.length,'ESS suivies'],['',T.act.toLocaleString('fr-FR'),'Patients actifs (MER)'],['',T.att.toLocaleString('fr-FR'),'Attendus · '+(mk?mLab(mk):'')],['o',T.real.toLocaleString('fr-FR'),'Réalisés'],['',pctTxt(tp),'% de réalisation'],['r',T.late.toLocaleString('fr-FR'),'En retard : tracking actif'],['',pctTxt(sp),'Suppression virale (< 1 000) : '+T.pN.toLocaleString('fr-FR')+' / '+T.pD.toLocaleString('fr-FR'),pctCls(sp)],['r',T.cra.toLocaleString('fr-FR'),'CV ≥ 1 000 : CRA · bas niveau 50–999 : '+T.low],['r',T.old,'Rapports anciens (> '+stale+' j)'],['',(()=>{const v=L.map(x=>x.tatMed).filter(v=>v!=null).sort((a,b)=>a-b);return v.length?v[Math.floor((v.length-1)/2)]+' j':'–'})(),'Délai de retour des résultats (médiane des sites)']]
     .map(t=>`<div class="tile ${t[0]}"><b class="${t[2]==='% de réalisation'?pctCls(tp):(t[3]||'')}">${t[1]}</b><span>${esc(t[2])}</span></div>`).join('');
   $('tTitle').textContent=`Situation par site${zone?' · '+zone:''}${mk?' · '+mLab(mk):''}`;
   $('tbS').innerHTML=L.map(x=>{const m=mOf(x),p=pct(m.real,m.att),age=Math.round((today()-fromIso(x.ref))/DAY),d=x.prev?x.late-x.prev.late:null;
@@ -278,6 +357,7 @@ $('bkf').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const o=J
 let armC=false;$('btnClear').onclick=()=>{if(!armC){armC=true;$('btnClear').textContent='Confirmer : tout effacer';return}ST={reports:{},zones:{}};save();SEL=null;armC=false;$('btnClear').textContent='Tout effacer';render()};
 $('btnCopyLate').onclick=async()=>{const x=latest().find(a=>a.ess===SEL);if(!x)return;const t=['N° dossier\tDate probable\tRetard (j)\tProchain RDV ARV'].concat((x.lateList||[]).map(p=>[p.dos,fr(fromIso(p.due)),p.ret,fr(fromIso(p.rdv))].join('\t'))).join('\n');
   try{await navigator.clipboard.writeText(t);msg('info',`Liste de tracking de ${esc(x.ess)} copiée (${(x.lateList||[]).length} patients).`)}catch(e){$('paste').value=t;msg('info','Copie refusée : la liste est dans la zone « Coller un rapport ».')}};
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 render();
 })();
 </script>
