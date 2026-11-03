@@ -2,235 +2,42 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self'; connect-src 'self'; font-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjAgMTIwIiB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImFnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjNDQzM2IwIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMjMxYTY2Ii8+PC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZGciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZmZmZmYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlY2U5ZmIiLz48L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB4PSI0IiB5PSI0IiB3aWR0aD0iMTEyIiBoZWlnaHQ9IjExMiIgcng9IjI4IiBmaWxsPSJ1cmwoI2FnKSIvPgogIDxwYXRoIGQ9Ik02MCAxNiBDNjAgMTYgMjggNTQgMjggNzQgQTMyIDMyIDAgMCAwIDkyIDc0IEM5MiA1NCA2MCAxNiA2MCAxNiBaIiBmaWxsPSJ1cmwoI2RnKSIvPgogIDxlbGxpcHNlIGN4PSI0NSIgY3k9IjUwIiByeD0iNCIgcnk9IjkiIHRyYW5zZm9ybT0icm90YXRlKDI4IDQ1IDUwKSIgZmlsbD0iI2ZmZmZmZiIgb3BhY2l0eT0iLjkiLz4KICA8cGF0aCBkPSJNNDAgNjIgQzQ4IDYwIDUwIDgwIDYwIDgyIEM2NiA4My41IDcyIDgzIDgwIDgzIiBmaWxsPSJub25lIiBzdHJva2U9IiMzNDI3ODciIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPGNpcmNsZSBjeD0iODAuNSIgY3k9IjgzIiByPSI2LjUiIGZpbGw9IiNmMmM0MDAiIHN0cm9rZT0iIzM0Mjc4NyIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KPC9zdmc+">
 <title>Ayaan Centralisateur</title>
-<style>
-/* Layout : barre d'import, tuiles de zone, tableau des sites (cœur), panneau détail du site avec graphiques */
-:root{
-  --bg:#f6f5fa; --panel:#ffffff; --ink:#1f1b33; --muted:#6b6880; --line:#dcd9e8;
-  --violet:#342787; --violet-soft:#ebe8f7; --jaune:#f2c400; --jaune-soft:#fff6d1; --bleu:#0b6fa6;
-  --ok:#1e8449; --ok-soft:#d8f0df; --warn:#9a6b00; --warn-soft:#fff1c2; --bad:#b42318; --bad-soft:#f9dcd8; --on:#ffffff;
-  --f-body:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif; --f-num:Consolas,"Cascadia Mono",ui-monospace,Menlo,monospace;
-  color-scheme:light;
-}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#14121f; --panel:#1d1a2c; --ink:#ecebf5; --muted:#a29fb8; --line:#34304a;
-  --violet:#a99cf2; --violet-soft:#2a2545; --jaune:#f2c400; --jaune-soft:#3a3214; --bleu:#5fb4e6;
-  --ok:#6fd08f; --ok-soft:#173523; --warn:#f2c94c; --warn-soft:#3a3014; --bad:#ff8a7a; --bad-soft:#41201c; --on:#14121f; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#14121f; --panel:#1d1a2c; --ink:#ecebf5; --muted:#a29fb8; --line:#34304a;
-  --violet:#a99cf2; --violet-soft:#2a2545; --jaune:#f2c400; --jaune-soft:#3a3214; --bleu:#5fb4e6;
-  --ok:#6fd08f; --ok-soft:#173523; --warn:#f2c94c; --warn-soft:#3a3014; --bad:#ff8a7a; --bad-soft:#41201c; --on:#14121f; color-scheme:dark}
-*{box-sizing:border-box}
-html,body{margin:0}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
-[hidden]{display:none!important}
-.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px;display:grid;gap:18px}
-header.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between;border-bottom:3px solid var(--jaune);padding-bottom:12px}
-.brand small{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--bleu);font-weight:600}
-.brand h1{margin:2px 0 0;font-size:26px;color:var(--violet)}
-.brand p{margin:4px 0 0;color:var(--muted);font-size:13px;max-width:70ch}
-.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.btn{font:inherit;font-weight:600;font-size:14px;border-radius:8px;border:1px solid var(--violet);background:var(--violet);color:var(--on);padding:8px 14px;cursor:pointer}
-.btn.ghost{background:transparent;color:var(--violet)}
-.btn:focus-visible,select:focus-visible,textarea:focus-visible,tr.click:focus-visible{outline:3px solid var(--jaune);outline-offset:2px}
-select,textarea{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-width:0}
-textarea{width:100%;min-height:80px;font-family:var(--f-num);font-size:12px}
-label.f{display:grid;gap:4px;font-size:12px;color:var(--muted);font-weight:600}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px;min-width:0}
-.panel h2{margin:0;font-size:17px;color:var(--violet)}
-.alert{border-radius:10px;padding:12px 14px;font-size:14px}
-.alert.bad{background:var(--bad-soft);color:var(--bad);font-weight:600}
-.alert.info{background:var(--jaune-soft);color:var(--ink)}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
-.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:2px}
-.tile b{font-family:var(--f-num);font-size:28px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--violet)}
-.tile span{font-size:13px;color:var(--muted)}
-.tile.r b{color:var(--bad)} .tile.o b{color:var(--ok)}
-.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
-table{border-collapse:collapse;width:100%;font-size:14px}
-th{background:var(--violet-soft);color:var(--violet);text-align:left;font-size:12px;padding:8px;white-space:nowrap}
-td{border-top:1px solid var(--line);padding:6px 8px;vertical-align:middle}
-td.num,th.num{text-align:right;font-family:var(--f-num);font-variant-numeric:tabular-nums}
-tr.click{cursor:pointer} tr.click:hover td{background:var(--violet-soft)} tr.sel td{background:var(--jaune-soft)}
-.tile b.pct-ok{color:var(--ok)} .tile b.pct-warn{color:var(--warn)} .tile b.pct-bad{color:var(--bad)}
-.pct-ok{color:var(--ok);font-weight:700}.pct-warn{color:var(--warn);font-weight:700}.pct-bad{color:var(--bad);font-weight:700}
-.pill{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap}
-.p-ok{background:var(--ok-soft);color:var(--ok)}.p-bad{background:var(--bad-soft);color:var(--bad)}.p-warn{background:var(--warn-soft);color:var(--warn)}
-.muted{color:var(--muted);font-size:13px}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px}
-svg text{fill:var(--muted);font-size:11px;font-family:var(--f-body)}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
-details summary{cursor:pointer;font-weight:600;color:var(--violet)}
-
-.logo{width:56px;height:56px;flex:none}
-.brandrow{display:flex;gap:14px;align-items:center}
-#splash{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:linear-gradient(135deg,#3d2fa0,#1d1554);color:#fff;transition:opacity .45s ease}
-#splash.out{opacity:0;pointer-events:none}
-#splash .sp{display:grid;justify-items:center;gap:14px;text-align:center}
-#splash .logo{width:132px;height:132px;animation:pop .7s cubic-bezier(.2,.9,.3,1.3) both;filter:drop-shadow(0 12px 28px rgba(0,0,0,.35))}
-#splash .nm{font-size:40px;font-weight:800;letter-spacing:-.5px;animation:up .6s .25s both}
-#splash .sb{font-size:14px;font-weight:700;letter-spacing:.3em;color:#f2c400;animation:up .6s .4s both}
-#splash .org{font-size:12px;opacity:.75;animation:up .6s .55s both}
-@keyframes pop{from{transform:scale(.4) rotate(-8deg);opacity:0}to{transform:none;opacity:1}}
-@keyframes up{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
-@media (prefers-reduced-motion: reduce){#splash .logo,#splash .nm,#splash .sb,#splash .org{animation:none}}
-.panel>*,details{min-width:0;max-width:100%}
-</style>
 <link rel="manifest" href="central.webmanifest">
 <meta name="theme-color" content="#342787">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Ayaan Central">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
+<link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
+<link rel="stylesheet" href="css/central.css">
+<link rel="stylesheet" href="css/verrou.css">
+<link rel="stylesheet" href="css/adaptatif.css">
+<script type="module" src="js/auth.js"></script>
+<script type="module" src="js/maj.js"></script>
+<script type="module" src="js/central.js"></script>
+<script src="js/accueil.js" defer></script>
 </head>
 <body data-need="central">
-<style>
-#pinLock{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:linear-gradient(135deg,#3d2fa0,#1d1554);color:#fff;padding:16px;overflow:auto}
-#pinLock[hidden]{display:none!important}
-#pinLock .pb{width:min(380px,100%);display:grid;gap:12px;text-align:center}
-#pinLock h2{margin:0;font-size:22px}
-#pinLock p{margin:0;font-size:14px;opacity:.9}
-#pinLock input{font:inherit;font-size:26px;letter-spacing:.4em;text-align:center;padding:10px;border-radius:10px;border:2px solid #f2c400;background:#fff;color:#1f1b33;width:100%}
-#pinLock input#pinName{font-size:18px;letter-spacing:0}
-#pinLock button{font:inherit;font-weight:700;font-size:16px;border-radius:10px;border:0;padding:12px;background:#f2c400;color:#1f1b33;cursor:pointer}
-#pinLock button.lnk{background:transparent;color:#fff;text-decoration:underline;font-weight:500;font-size:14px;padding:4px}
-#pinLock .err{color:#ffb4a8;font-weight:700;min-height:1.2em}
-#pinLock .code{font-family:ui-monospace,Menlo,monospace;font-size:26px;letter-spacing:.15em;background:#fff;color:#342787;border-radius:10px;padding:10px}
-.who{font-size:12px;color:var(--muted);font-weight:600}
-.who b{color:var(--violet)}
-</style>
 <div id="pinLock" hidden role="dialog" aria-modal="true" aria-labelledby="pinT"><div class="pb">
   <h2 id="pinT">Ayaan</h2><p id="pinP"></p>
   <div id="pinCodeBox" class="code" hidden></div>
-  <select id="pinCat" aria-label="Type de compte" style="font:inherit;font-size:17px;padding:11px;border-radius:10px;border:2px solid #f2c400;background:#fff;color:#1f1b33;width:100%"><option value="">Choisissez votre type de compte…</option><option value="admin">1. Administrateurs</option><option value="user">2. Utilisateurs</option></select>
+  <select id="pinCat" aria-label="Type de compte"><option value="">Choisissez votre type de compte…</option><option value="admin">1. Administrateurs</option><option value="user">2. Utilisateurs</option></select>
   <input id="pinName" type="text" autocomplete="off" maxlength="40" placeholder="Votre nom" aria-label="Votre nom" hidden>
-  <input id="pinIn" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Code PIN">
-  <input id="pinIn2" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Confirmer le code PIN" hidden>
+  <input id="pinIn" type="password" inputmode="numeric" autocomplete="off" maxlength="8" aria-label="Code PIN">
+  <input id="pinIn2" type="password" inputmode="numeric" autocomplete="off" maxlength="8" aria-label="Confirmer le code PIN" hidden>
   <div class="err" id="pinErr" aria-live="assertive"></div>
   <button type="button" id="pinOk">Valider</button>
   <button type="button" class="lnk" id="pinForgot">Code PIN oublié ?</button>
 </div></div>
-<div id="ayRights" hidden role="dialog" aria-modal="true" aria-labelledby="ayRT" style="position:fixed;inset:0;z-index:95;background:rgba(20,18,31,.55);display:grid;place-items:center;padding:16px">
- <div style="background:var(--panel);color:var(--ink);border-radius:16px;width:min(560px,100%);max-height:90vh;overflow:auto;padding:18px;border-top:6px solid var(--jaune);display:grid;gap:10px">
-  <h2 id="ayRT" style="margin:0;color:var(--violet);font-size:20px">Mes droits</h2><div id="ayRS" class="muted"></div><div id="ayRL"></div>
+<div id="ayRights" hidden role="dialog" aria-modal="true" aria-labelledby="ayRT">
+ <div class="boite">
+  <h2 id="ayRT">Mes droits</h2><div id="ayRS" class="muted"></div><div id="ayRL"></div>
   <div><button class="btn ghost" type="button" id="ayRC">Fermer</button></div></div></div>
-<style>#ayRights[hidden]{display:none!important}.rgt{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--line);font-size:14px}.rgt b{min-width:38px}.rgt .y{color:var(--ok)}.rgt .n{color:var(--bad)}
-.mx{border-collapse:collapse;width:100%;font-size:13px}.mx th{background:var(--violet-soft);color:var(--violet);padding:6px;text-align:left;font-size:12px}.mx td{border-top:1px solid var(--line);padding:5px 6px}.mx td.c{text-align:center;font-weight:700}.mx td.c.y{color:var(--ok);background:var(--ok-soft)}.mx td.c.n{color:var(--bad);background:var(--bad-soft)}.mx tr.g td{background:var(--violet-soft);color:var(--violet);font-weight:700}</style>
-<script>
-/* Ayaan : utilisateurs, rôles et code PIN. Les PIN ne sont jamais stockés en clair (empreinte salée).
-   Matrice d'accès : voir ROLES et PERMS ci-dessous (identique au fichier « Matrice d'accès Ayaan.xlsx »).
-   Le code de secours (affiché une fois à la création du premier administrateur) permet à un administrateur
-   de choisir un nouveau PIN sans perdre les données. */
-(function(){
-const K='ayaan.users.v1',KOLD='ayaan.pin.v1',IDLE=10*60*1000,AWAY=5*60*1000;
-const ROLES={admin:'Administrateur',gest:'Gestionnaire de données',prest:'Prestataire CV',sup:'Superviseur de site'};
-const PERMS={
-  admin:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde','restaurer','effacer','utilisateurs','central','c_importer','annees'],
-  gest:['voir','saisir','exporter','importer','manuel','rapport','sauvegarde'],
-  prest:['voir','saisir','exporter','importer','manuel','rapport'],
-  sup:['voir','saisir','exporter','importer','manuel','rapport']};
-const ACTIONS=[['Ayaan Suivi CV',[['Voir les listes, les tuiles et les tableaux','voir'],['Saisir prélèvement, résultat CV, date de retour, début du CRA, commentaire','saisir'],['Copier ou télécharger la liste (Excel)','exporter'],['Importer l\'export Tier.Net','importer'],['Saisie manuelle d\'un patient (ajouter, modifier, supprimer)','manuel'],['Envoyer le rapport au centralisateur','rapport'],['Copier ou enregistrer la sauvegarde','sauvegarde'],['Restaurer une sauvegarde','restaurer'],['Effacer les données de l\'appareil','effacer'],['Gérer les utilisateurs et les PIN','utilisateurs'],['Ajouter les années fiscales','annees']]],
- ['Centralisateur',[['Ouvrir le centralisateur et l\'utiliser (tableau de bord, import des rapports, sauvegardes)','central']]],
- ['Compte personnel',[['Changer son propre code PIN','*'],['Verrouiller l\'application','*'],['Voir ses droits (« Mes droits »)','*']]]];
-const okFor=(role,p)=>p==='*'||(PERMS[role]||[]).includes(p);
-const $=id=>document.getElementById(id);
-const rd=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};
-const wr=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
-const ss={get(k){try{return sessionStorage.getItem(k)}catch(e){return null}},set(k,v){try{sessionStorage.setItem(k,v)}catch(e){}}};
-const rnd=n=>{const a=new Uint8Array(n);crypto.getRandomValues(a);return [...a].map(b=>b.toString(16).padStart(2,'0')).join('')};
-async function h(salt,txt){const d=new TextEncoder().encode(salt+'|'+txt);
-  if(crypto.subtle){let b=await crypto.subtle.digest('SHA-256',d);for(let i=0;i<999;i++)b=await crypto.subtle.digest('SHA-256',new Uint8Array([...new Uint8Array(b),...d]));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
-  let x=5381;for(let r=0;r<2000;r++)for(const c of d)x=((x*33)^c^r)>>>0;return 'f'+x.toString(16)}
-const recCode=()=>{const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789';const a=new Uint8Array(8);crypto.getRandomValues(a);const s=[...a].map(b=>A[b%A.length]).join('');return s.slice(0,4)+'-'+s.slice(4)};
-// migration de la v7 (un seul PIN) : il devient le PIN de l'administrateur
-let DB=rd(K);
-if(!DB){const o=rd(KOLD);if(o&&o.h){DB={rs:o.rs,rh:o.rh,users:[{id:rnd(6),nom:'Administrateur',role:'admin',s:o.s,h:o.h,cree:new Date().toISOString().slice(0,10)}]};wr(K,DB)}}
-const save=()=>wr(K,DB);
-const hasUsers=()=>!!(DB&&DB.users&&DB.users.length);
-let CUR=null;
-function badPin(a){if(!/^\d{4,6}$/.test(a))return 'Le code PIN doit contenir 4 à 6 chiffres.';if(/^(\d)\1+$/.test(a)||'0123456789'.includes(a)||'9876543210'.includes(a))return 'Code trop facile à deviner (ex. 0000, 1234) : choisissez-en un autre.';return ''}
-async function findByPin(pin,exceptId,cat){for(const u of (DB&&DB.users)||[]){if(cat==='admin'&&u.role!=='admin')continue;if(cat==='user'&&u.role==='admin')continue;if(u.id!==exceptId&&await h(u.s,pin)===u.h)return u}return null}
-function login(u){CUR=u;ss.set('ayaan.cur',u.id);ss.set('ayaan.unl',String(Date.now()));paint();document.dispatchEvent(new CustomEvent('ayaan-user',{detail:pub()}))}
-const pub=()=>CUR?{id:CUR.id,nom:CUR.nom,role:CUR.role,roleLab:ROLES[CUR.role]}:null;
-function paint(){document.querySelectorAll('[data-who]').forEach(el=>{el.innerHTML=CUR?`Connecté : <b>${CUR.nom.replace(/[&<>"]/g,'')}</b> · ${ROLES[CUR.role]} · <button type="button" onclick="AY.showRights()" style="font:inherit;font-size:12px;background:none;border:0;color:var(--bleu);text-decoration:underline;cursor:pointer;padding:0">Mes droits</button>`:''});
-  document.querySelectorAll('[data-perm]').forEach(el=>{const ok=can(el.dataset.perm);if(el.tagName==='SELECT'||el.tagName==='INPUT'||el.tagName==='TEXTAREA')el.disabled=!ok;else el.hidden=!ok})}
-function can(p){return !!(CUR&&(PERMS[CUR.role]||[]).includes(p))}
-// ----- écran de verrouillage
-let mode='',fails=0,waitUntil=0,last=Date.now(),hiddenAt=0,target=null;
-const CAT=$('pinCat'),L=$('pinLock'),N=$('pinName'),I=$('pinIn'),I2=$('pinIn2'),E=$('pinErr'),P=$('pinP'),OK=$('pinOk'),F=$('pinForgot'),CB=$('pinCodeBox');
-function show(m){mode=m;L.hidden=false;E.textContent='';I.value='';I2.value='';N.value='';N.hidden=true;CAT.hidden=m!=='unlock';CAT.value='';I.hidden=m==='unlock';OK.hidden=m==='unlock';I2.hidden=true;CB.hidden=true;F.hidden=true;OK.textContent='Valider';
-  I.type='password';I.maxLength=6;I.setAttribute('inputmode','numeric');I.setAttribute('aria-label','Code PIN');
-  if(m==='unlock')P.textContent='Choisissez votre type de compte, puis entrez votre code PIN.';
-  else if(m==='denied'){P.textContent='Le centralisateur est réservé aux administrateurs. Votre compte est un compte utilisateur.';I.hidden=true;OK.hidden=false;OK.textContent='Retour à Ayaan Suivi CV';F.hidden=true}
-  else if(m==='first'){P.textContent='Première utilisation : créez le compte administrateur de cet appareil. Saisissez votre nom, puis un code PIN de 4 à 6 chiffres et confirmez-le.';N.hidden=false;I2.hidden=false}
-  else if(m==='newpin'){P.textContent='Choisissez votre nouveau code PIN, puis confirmez-le.';I2.hidden=false}
-  else if(m==='recover'){P.textContent='Administrateur : entrez le code de secours noté à la création (ex. ABCD-1234). Les autres utilisateurs demandent à l\'administrateur de réinitialiser leur PIN.';I.removeAttribute('inputmode');I.type='text';I.maxLength=9;I.setAttribute('aria-label','Code de secours')}
-  if(m!=='unlock')OK.hidden=false;
-  if(m==='unlock'&&document.body&&document.body.dataset.need==='central'){CAT.value='admin';CAT.hidden=true;I.hidden=false;OK.hidden=false;F.hidden=false;P.innerHTML='Centralisateur : connexion réservée aux <b>administrateurs</b>. Entrez votre code PIN.<br><a href="index.html" style="color:#f2c400">Retour à Ayaan Suivi CV</a>'}
-  setTimeout(()=>(m==='unlock'&&!CAT.hidden?CAT:(N.hidden?I:N)).focus(),50)}
-function hide(){L.hidden=true;mode='';last=Date.now()}
-async function submit(){
-  if(mode==='unlock'||mode==='change'){
-    if(Date.now()<waitUntil){E.textContent='Trop d\'essais : patientez '+Math.ceil((waitUntil-Date.now())/1000)+' s.';return}
-    if(mode==='unlock'&&!CAT.value){E.textContent='Choisissez d\'abord votre type de compte.';return}
-    const u=mode==='change'?((CUR&&await h(CUR.s,I.value)===CUR.h)?CUR:null):await findByPin(I.value,null,CAT.value);
-    if(!u){fails++;I.value='';E.textContent='Code PIN incorrect.';if(fails>=5){waitUntil=Date.now()+30000;fails=0;E.textContent='5 essais incorrects : patientez 30 s.'}return}
-    fails=0;if(mode==='change'){target=u;show('newpin');return}login(u);if(needOk())hide();else show('denied');return}
-  if(mode==='denied'){location.href='index.html';return}
-  if(mode==='first'||mode==='newpin'){
-    const nm=N.value.trim(),a=I.value.trim(),b=I2.value.trim();
-    if(mode==='first'&&nm.length<2){E.textContent='Saisissez votre nom.';return}
-    const bp=badPin(a);if(bp){E.textContent=bp;return}
-    if(a!==b){E.textContent='Les deux codes ne sont pas identiques.';I2.value='';return}
-    if(await findByPin(a,target&&target.id)){E.textContent='Ce code PIN est déjà utilisé par un autre utilisateur : choisissez-en un autre.';return}
-    const s=rnd(16),hh=await h(s,a);
-    if(mode==='newpin'){target.s=s;target.h=hh;save();const u=target;target=null;login(u);hide();if(window.ayaanPinMsg)window.ayaanPinMsg('Nouveau code PIN enregistré.');return}
-    const rc=recCode(),rs=rnd(16);DB={rs,rh:await h(rs,rc),users:[{id:rnd(6),nom:nm,role:'admin',s,h:hh,cree:new Date().toISOString().slice(0,10)}]};save();
-    login(DB.users[0]);mode='showcode';P.textContent='Compte administrateur créé. Notez ce code de secours sur papier et gardez-le en lieu sûr : il permet à l\'administrateur de choisir un nouveau PIN s\'il l\'oublie, sans perdre les données.';
-    CB.textContent=rc;CB.hidden=false;N.hidden=true;I.hidden=true;I2.hidden=true;E.textContent='';OK.textContent='J\'ai noté le code de secours';F.hidden=true;OK.focus();return}
-  if(mode==='showcode'){hide();return}
-  if(mode==='recover'){
-    const v=I.value.trim().toUpperCase().replace(/\s/g,'');const vv=v.includes('-')?v:v.slice(0,4)+'-'+v.slice(4);
-    if(DB&&await h(DB.rs,vv)===DB.rh){target=DB.users.find(u=>u.role==='admin');show('newpin');P.textContent=`Code de secours accepté. Choisissez un nouveau code PIN pour ${target.nom} (administrateur), puis confirmez-le.`}else E.textContent='Code de secours incorrect.'}
-}
-CAT.addEventListener('change',()=>{const on=!!CAT.value;I.hidden=!on;OK.hidden=!on;F.hidden=!on||CAT.value!=='admin';E.textContent='';if(on){P.textContent=CAT.value==='admin'?'Administrateur : entrez votre code PIN.':'Utilisateur : entrez votre code PIN.';I.focus()}});
-const needOk=()=>{const n=document.body&&document.body.dataset.need;return !n||can(n)};
-OK.onclick=submit;
-[N,I,I2].forEach(x=>x.addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();if(x===N)I.focus();else if(x===I&&!I2.hidden&&!I2.value)I2.focus();else submit()}));
-F.onclick=()=>show('recover');
-['pointerdown','keydown','scroll','touchstart'].forEach(ev=>addEventListener(ev,()=>{last=Date.now()},{passive:true,capture:true}));
-setInterval(()=>{if(!mode&&hasUsers()&&Date.now()-last>IDLE)show('unlock')},15000);
-document.addEventListener('visibilitychange',()=>{if(document.hidden)hiddenAt=Date.now();else if(!mode&&hasUsers()&&hiddenAt&&Date.now()-hiddenAt>AWAY)show('unlock')});
-addEventListener('pagehide',()=>{if(!mode)ss.set('ayaan.unl',String(last))});
-// ----- API pour les pages
-const AY=window.AY={ROLES,PERMS,can,user:pub,
-  lock(){if(hasUsers())show('unlock')},
-  changePin(){if(!CUR)return;show('unlock');mode='change';F.hidden=true;CAT.hidden=true;I.hidden=false;OK.hidden=false;setTimeout(()=>I.focus(),60);P.textContent='Entrez votre code PIN actuel.'},
-  showRights(){if(!CUR)return;$('ayRS').textContent=CUR.nom+' · '+ROLES[CUR.role];$('ayRL').innerHTML=ACTIONS.map(([g,a])=>`<div style="font-weight:700;color:var(--violet);margin-top:8px">${g}</div>`+a.map(([t,p])=>{const ok=okFor(CUR.role,p);return `<div class="rgt"><b class="${ok?'y':'n'}">${ok?'Oui':'Non'}</b><span>${t}</span></div>`}).join('')).join('');$('ayRights').hidden=false;$('ayRC').focus()},
-  matrixHTML(){const rk=Object.keys(ROLES);return `<table class="mx"><thead><tr><th>Action</th>${rk.map(r=>`<th style="text-align:center">${ROLES[r]}</th>`).join('')}</tr></thead><tbody>`+ACTIONS.map(([g,a])=>`<tr class="g"><td colspan="${rk.length+1}">${g}</td></tr>`+a.map(([t,p])=>`<tr><td>${t}</td>${rk.map(r=>{const ok=okFor(r,p);return `<td class="c ${ok?'y':'n'}">${ok?'Oui':'Non'}</td>`}).join('')}</tr>`).join('')).join('')+'</tbody></table>'},
-  list(){return (DB&&DB.users||[]).map(u=>({id:u.id,nom:u.nom,role:u.role,roleLab:ROLES[u.role],cree:u.cree}))},
-  async save(id,nom,role,pin){if(!can('utilisateurs'))return 'Action réservée à l\'administrateur.';nom=String(nom||'').trim();if(nom.length<2)return 'Saisissez le nom de l\'utilisateur.';if(!ROLES[role])return 'Choisissez un rôle.';
-    const u=id?DB.users.find(x=>x.id===id):null;if(id&&!u)return 'Utilisateur introuvable.';
-    if(u&&u.role==='admin'&&role!=='admin'&&DB.users.filter(x=>x.role==='admin').length<2)return 'Il faut garder au moins un administrateur.';
-    if(!u||pin){const bp=badPin(pin||'');if(bp)return bp;if(await findByPin(pin,u&&u.id))return 'Ce code PIN est déjà utilisé par un autre utilisateur.'}
-    if(DB.users.some(x=>x.id!==id&&x.nom.toLowerCase()===nom.toLowerCase()))return 'Un utilisateur porte déjà ce nom.';
-    const t=u||{id:rnd(6),cree:new Date().toISOString().slice(0,10)};t.nom=nom;t.role=role;if(pin){t.s=rnd(16);t.h=await h(t.s,pin)}if(!u)DB.users.push(t);save();if(CUR&&CUR.id===t.id)login(t);else paint();return ''},
-  del(id){if(!can('utilisateurs'))return 'Action réservée à l\'administrateur.';const u=DB.users.find(x=>x.id===id);if(!u)return 'Utilisateur introuvable.';if(CUR&&CUR.id===id)return 'Vous ne pouvez pas supprimer votre propre compte.';
-    if(u.role==='admin'&&DB.users.filter(x=>x.role==='admin').length<2)return 'Il faut garder au moins un administrateur.';DB.users=DB.users.filter(x=>x.id!==id);save();return ''}
-};
-window.ayaanLock=AY.lock;$('ayRC').onclick=()=>{$('ayRights').hidden=true};$('ayRights').addEventListener('click',e=>{if(e.target.id==='ayRights')$('ayRights').hidden=true});window.ayaanChangePin=AY.changePin;
-// ----- démarrage
-(function(){if(!hasUsers()){show('first');return}
-  const cid=ss.get('ayaan.cur'),u=+ss.get('ayaan.unl')||0,me=DB.users.find(x=>x.id===cid);
-  if(me&&u&&Date.now()-u<IDLE&&(!(document.body&&document.body.dataset.need)||okFor(me.role,document.body.dataset.need))){CUR=me;document.addEventListener('DOMContentLoaded',()=>{paint();document.dispatchEvent(new CustomEvent('ayaan-user',{detail:pub()}))});if(document.readyState!=='loading')setTimeout(()=>{paint();document.dispatchEvent(new CustomEvent('ayaan-user',{detail:pub()}))},0);return}
-  show('unlock')})();
-})();
-</script>
 
 <div id="splash" role="presentation"><div class="sp"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" class="logo" aria-hidden="true">
   <defs>
@@ -261,8 +68,8 @@ window.ayaanLock=AY.lock;$('ayRC').onclick=()=>{$('ayRights').hidden=true};$('ay
       <p>Tableau de bord de toutes les ESS à partir des rapports envoyés par Ayaan Suivi CV. Fonctionne sans Internet ; les données restent sur cet ordinateur.</p>
     </div></div>
     <div class="row">
-      <input type="file" id="files" accept=".json,.txt" multiple hidden>
-      <button class="btn ghost" type="button" onclick="ayaanLock()">Verrouiller</button><a class="btn ghost" href="index.html" style="text-decoration:none">Ouvrir Ayaan Suivi CV</a><button class="btn" id="btnImp" type="button" data-perm="c_importer">Importer des rapports</button>
+      <input type="file" id="files" class="fichier-cache" multiple tabindex="-1" aria-hidden="true">
+      <button class="btn ghost" type="button" data-action="verrouiller">Verrouiller</button><a class="btn ghost" href="index.html" style="text-decoration:none">Ouvrir Ayaan Suivi CV</a><button class="btn" id="btnImp" type="button" data-perm="c_importer">Importer des rapports</button>
     </div>
   </header>
   <div id="msg"></div>
@@ -304,138 +111,10 @@ window.ayaanLock=AY.lock;$('ayRC').onclick=()=>{$('ayRights').hidden=true};$('ay
       <div class="row" style="margin-top:6px"><button class="btn ghost" id="btnPaste" type="button">Ajouter ce rapport</button></div>
     </details>
     <details><summary>Historique des rapports</summary><div class="tw" style="margin-top:8px;max-height:300px"><table><thead><tr><th>ESS</th><th>Date du rapport</th><th>Envoyé par</th><th>Reçu le</th><th class="num">Actifs</th><th class="num">En retard</th><th></th></tr></thead><tbody id="tbH"></tbody></table></div></details>
-    <div class="row"><button class="btn ghost" id="btnSave" type="button" data-perm="sauvegarde">Enregistrer une sauvegarde (fichier)</button><button class="btn ghost" id="btnRestore" type="button" data-perm="restaurer">Restaurer une sauvegarde</button><input type="file" id="bkf" accept=".json" hidden><button class="btn ghost" id="btnClear" type="button" data-perm="effacer">Tout effacer</button><button class="btn ghost" type="button" onclick="ayaanChangePin()">Changer le code PIN</button></div>
-    <div class="muted" id="bmsg"></div>
+    <div class="row"><button class="btn ghost" id="btnSave" type="button" data-perm="sauvegarde">Enregistrer une sauvegarde chiffrée (fichier)</button><button class="btn ghost" id="btnRestore" type="button" data-perm="restaurer">Restaurer une sauvegarde</button><input type="file" id="bkf" class="fichier-cache" tabindex="-1" aria-hidden="true"><button class="btn ghost" id="btnClear" type="button" data-perm="effacer">Tout effacer</button><button class="btn ghost" type="button" data-action="changer-pin">Changer le code PIN</button></div>
+    <div class="row" id="bkCodeCLab" hidden><label class="f" for="bkCodeC">Code de secours de l'ordinateur d'origine<input type="text" id="bkCodeC" maxlength="9" autocomplete="off" placeholder="ABCD-1234"></label><button class="btn" type="button" id="bkCodeOk">Valider le code</button></div>
+    <div class="muted" id="bmsg" aria-live="polite"></div>
   </section>
 </div>
-<script>(function(){var s=document.getElementById('splash');if(!s)return;var t=matchMedia('(prefers-reduced-motion: reduce)').matches?500:1500;function h(){s.classList.add('out');setTimeout(function(){s.remove()},500)}setTimeout(h,t);s.addEventListener('click',h)})();</script>
-<script>
-(function(){
-const $=id=>document.getElementById(id);
-const K='ayaan.central.v1',DAY=864e5;
-const store={get(){try{return JSON.parse(localStorage.getItem(K)||'null')}catch(e){return null}},set(v){try{localStorage.setItem(K,JSON.stringify(v));return true}catch(e){return false}}};
-let ST=store.get()||{reports:{},zones:{}};
-const ZONES=['Bandalungwa','Binza-Météo','Kikimi','Kingasani','Masina II'];
-const KNOWN={'Masina II':['CS ELONGA','SAINT HILAIRE','CS LUNDA','MAPELA','PODI MASINA 2','CS KIMBELA','KASAI','CS TEMOIGNAGE','CS BORA','MAFUTA KIZOLA','AVENIR','ALFADO']};
-const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fromIso=s=>{if(!s)return null;const[a,b,c]=s.slice(0,10).split('-').map(Number);return new Date(a,b-1,c)};
-const fr=d=>d?`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`:'';
-const MOIS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-const mLab=m=>{const[y,mm]=m.split('-').map(Number);return MOIS[mm-1].replace(/^./,c=>c.toUpperCase())+' '+y};
-const pct=(a,b)=>b?a/b:null;
-const pctTxt=v=>v==null?'–':(v*100).toFixed(1).replace('.',',')+' %';
-const pctCls=v=>v==null?'':(v>=.95?'pct-ok':v>=.85?'pct-warn':'pct-bad');
-const today=()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate())};
-function msg(k,t){$('msg').innerHTML=t?`<div class="alert ${k}">${t}</div>`:''}
-function zoneOf(e){if(ST.zones[e])return ST.zones[e];for(const z in KNOWN)if(KNOWN[z].includes(e.toUpperCase()))return z;return 'Non classée'}
-function addReport(r,src){
-  if(!r||r.type!=='ayaan-rapport'||!Array.isArray(r.sites))throw new Error('ce n\'est pas un rapport Ayaan Suivi CV');
-  if(r.example)throw new Error('rapport fait avec les données d\'exemple');
-  const o={n:0,repl:0,old:0};
-  // Un seul rapport par ESS et par mois : le plus récent (date de création) remplace l'ancien, d'où qu'il vienne.
-  for(const s of r.sites){const list=ST.reports[s.ess]=ST.reports[s.ess]||[];const rec={...s,ref:r.ref,fy:r.fy,gen:r.gen,by:r.by||null,recv:new Date().toISOString(),src};
-    const i=list.findIndex(x=>x.ref.slice(0,7)===r.ref.slice(0,7));
-    if(i>=0){if((list[i].gen||'')>(r.gen||'')){o.old++;continue}list[i]=rec;o.repl++}else list.push(rec);
-    list.sort((a,b)=>a.ref.localeCompare(b.ref));o.n++}
-  return o;
-}
-function save(){if(!store.set(ST))msg('bad','Cet ordinateur n\'a pas pu enregistrer les rapports. Faites une sauvegarde en fichier.')}
-function latest(fy){const fyOf=m=>{const[y,mm]=m.split('-').map(Number);return mm>=10?y:y-1};const out=[];for(const e in ST.reports){const l0=ST.reports[e];const l=fy==null?l0:l0.filter(x=>fyOf(x.ref.slice(0,7))<=fy);const inFy=l.filter(x=>fy==null||fyOf(x.ref.slice(0,7))===fy);if(inFy.length){const last=inFy[inFy.length-1],i=l.indexOf(last);out.push({...last,prev:i>0?l[i-1]:null,hist:l})}}return out.sort((a,b)=>a.ess.localeCompare(b.ess))}
-let SEL=null;
-
-function spark(months,mk){
-  const w=120,h=28,pts=months.map((m,i)=>{const v=m.att?m.real/m.att:null;return v==null?null:[i*(w/11),h-2-v*(h-4)]});
-  const segs=[];let cur=[];pts.forEach(p=>{if(p)cur.push(p);else if(cur.length){segs.push(cur);cur=[]}});if(cur.length)segs.push(cur);
-  const sel=months.findIndex(m=>m.m===mk);const sp=pts[sel];
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="Évolution du pourcentage de réalisation"><line x1="0" x2="${w}" y1="${h-2-.95*(h-4)}" y2="${h-2-.95*(h-4)}" stroke="var(--ok)" stroke-dasharray="2 3" stroke-width="1"/>${segs.map(s=>`<polyline fill="none" stroke="var(--violet)" stroke-width="1.6" points="${s.map(p=>p.join(',')).join(' ')}"/>`).join('')}${sp?`<circle cx="${sp[0]}" cy="${sp[1]}" r="3" fill="var(--jaune)" stroke="var(--violet)"/>`:''}</svg>`;
-}
-function barChart(months,mk){
-  const W=520,H=210,L=34,B=30,T=10,R=8;const max=Math.max(1,...months.map(m=>m.att));const step=(W-L-R)/months.length,bw=step*.36;
-  const y=v=>H-B-(v/max)*(H-B-T);let g='';
-  for(let i=0;i<=4;i++){const v=Math.round(max*i/4);g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-4}" y="${y(v)+4}" text-anchor="end">${v}</text>`}
-  months.forEach((m,i)=>{const x=L+i*step+step*.12;g+=`<rect x="${x}" y="${y(m.att)}" width="${bw}" height="${H-B-y(m.att)}" fill="var(--violet-soft)" stroke="var(--violet)"/><rect x="${x+bw+2}" y="${y(m.real)}" width="${bw}" height="${H-B-y(m.real)}" fill="var(--ok)"/>`;
-    const p=m.att?Math.round(100*m.real/m.att):null;if(p!=null&&m.att)g+=`<text x="${x+bw}" y="${Math.min(y(m.att),y(m.real))-3}" text-anchor="middle">${p}%</text>`;
-    g+=`<text x="${x+bw}" y="${H-B+14}" text-anchor="middle" ${m.m===mk?'style="font-weight:700;fill:var(--ink)"':''}>${MOIS[+m.m.slice(5)-1].slice(0,3)}</text>`});
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Attendus et réalisés par mois">${g}</svg>`;
-}
-function lineChart(hist){
-  const W=520,H=210,L=40,B=30,T=10,R=10;if(hist.length<2)return '<p class="muted">L\'évolution apparaîtra à partir du deuxième rapport reçu pour ce site.</p>';
-  const max=Math.max(1,...hist.map(h=>Math.max(h.late,h.actifs)));const x=i=>L+i*(W-L-R)/(hist.length-1),y=v=>H-B-(v/max)*(H-B-T);let g='';
-  for(let i=0;i<=4;i++){const v=Math.round(max*i/4);g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-4}" y="${y(v)+4}" text-anchor="end">${v}</text>`}
-  const pl=(k,c)=>`<polyline fill="none" stroke="${c}" stroke-width="2" points="${hist.map((h,i)=>x(i)+','+y(h[k])).join(' ')}"/>`+hist.map((h,i)=>`<circle cx="${x(i)}" cy="${y(h[k])}" r="3" fill="${c}"/>`).join('');
-  g+=pl('actifs','var(--violet)')+pl('late','var(--bad)');
-  hist.forEach((h,i)=>{if(hist.length<=8||i%Math.ceil(hist.length/8)===0||i===hist.length-1)g+=`<text x="${x(i)}" y="${H-B+14}" text-anchor="${i===hist.length-1?'end':i===0?'start':'middle'}">${fr(fromIso(h.ref)).slice(0,5)}</text>`});
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Évolution des actifs et des retards">${g}</svg>`;
-}
-
-function render(){
-  const fyOf=m=>{const[y,mm]=m.split('-').map(Number);return mm>=10?y:y-1};
-  const allM=[...new Set(Object.values(ST.reports).flat().flatMap(x=>(x.months||[]).map(m=>m.m)).concat(Object.values(ST.reports).flat().map(x=>x.ref.slice(0,7))))];
-  const nowFy=(()=>{const d=today();return d.getMonth()>=9?d.getFullYear():d.getFullYear()-1})();
-  const fys=[...new Set(allM.map(fyOf).concat([nowFy]))].sort((a,b)=>b-a);const fSel=$('selFyC'),fc=fSel.value;
-  fSel.innerHTML=fys.map(y=>`<option value="${y}">FY${String(y+1).slice(2)} (oct. ${y} – sept. ${y+1})${y===nowFy?' · en cours':''}</option>`).join('');fSel.value=fys.map(String).includes(fc)?fc:String(nowFy);
-  const FYS=+fSel.value;
-  const all=latest(FYS);
-  // zones & months
-  const zSel=$('selZone'),zc=zSel.value;const zs=[...new Set(all.map(x=>zoneOf(x.ess)))].sort();
-  zSel.innerHTML=`<option value="">Toutes les zones</option>`+zs.map(z=>`<option${z===zc?' selected':''}>${esc(z)}</option>`).join('');
-  const mSel=$('selMonth'),mc=mSel.value;const ms=[...new Set(all.flatMap(x=>(x.months||[]).map(m=>m.m)))].filter(m=>fyOf(m)===FYS).sort();
-  const curM=(()=>{const d=today();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`})();
-  mSel.innerHTML=ms.map(m=>`<option value="${m}">${mLab(m)}</option>`).join('');mSel.value=ms.includes(mc)?mc:(ms.includes(curM)?curM:(ms[0]||''));
-  const mk=mSel.value,zone=zSel.value,stale=+$('selStale').value;
-  const L=all.filter(x=>!zone||zoneOf(x.ess)===zone);
-  if(!all.length){msg('info','Aucun rapport pour l\'instant. Dans chaque site, cliquez sur « Envoyer au centralisateur » dans Ayaan Suivi CV, puis importez ici les fichiers reçus (plusieurs à la fois si besoin).');}
-  const mOf=x=>(x.months||[]).find(m=>m.m===mk)||{att:0,real:0};
-  const T=L.reduce((a,x)=>{const m=mOf(x);a.act+=x.actifs;a.att+=m.att;a.real+=m.real;a.late+=x.late;a.old+=((today()-fromIso(x.ref))/DAY>stale)?1:0;a.pD+=x.pvlsD||0;a.pN+=x.pvlsN||0;a.cra+=x.cra||0;a.craT+=x.craTodo||0;a.low+=x.low||0;return a},{act:0,att:0,real:0,late:0,old:0,pD:0,pN:0,cra:0,low:0,craT:0});
-  const sp=pct(T.pN,T.pD);
-  const tp=pct(T.real,T.att);
-  $('tiles').innerHTML=[['',L.length,'ESS suivies'],['',T.act.toLocaleString('fr-FR'),'Patients actifs (MER)'],['',T.att.toLocaleString('fr-FR'),'Attendus · '+(mk?mLab(mk):'')],['o',T.real.toLocaleString('fr-FR'),'Réalisés'],['',pctTxt(tp),'% de réalisation'],['r',T.late.toLocaleString('fr-FR'),'En retard : tracking actif'],['',pctTxt(sp),'Suppression virale (< 1 000) : '+T.pN.toLocaleString('fr-FR')+' / '+T.pD.toLocaleString('fr-FR'),pctCls(sp)],['r',T.cra.toLocaleString('fr-FR'),'CV ≥ 1 000 · CRA à commencer : '+T.craT+' · bas niveau 50–999 : '+T.low],['r',T.old,'Rapports anciens (> '+stale+' j)'],['',(()=>{const v=L.map(x=>x.tatMed).filter(v=>v!=null).sort((a,b)=>a-b);return v.length?v[Math.floor((v.length-1)/2)]+' j':'–'})(),'Délai de retour des résultats (médiane des sites)']]
-    .map(t=>`<div class="tile ${t[0]}"><b class="${t[2]==='% de réalisation'?pctCls(tp):(t[3]||'')}">${t[1]}</b><span>${esc(t[2])}</span></div>`).join('');
-  $('tTitle').textContent=`Situation par site${zone?' · '+zone:''}${mk?' · '+mLab(mk):''}`;
-  $('tbS').innerHTML=L.map(x=>{const m=mOf(x),p=pct(m.real,m.att),age=Math.round((today()-fromIso(x.ref))/DAY),d=x.prev?x.late-x.prev.late:null;
-    const tr=d==null?'<span class="muted">1er rapport</span>':d>0?`<span class="pill p-bad">▲ +${d}</span>`:d<0?`<span class="pill p-ok">▼ ${d}</span>`:'<span class="pill p-warn">= 0</span>';
-    return `<tr class="click${x.ess===SEL?' sel':''}" tabindex="0" data-e="${esc(x.ess)}"><td><b>${esc(x.ess)}</b></td>
-    <td><select data-z="${esc(x.ess)}"${AY.can('c_importer')?'':' disabled'} aria-label="Zone de ${esc(x.ess)}">${[...ZONES,'Non classée'].map(z=>`<option${z===zoneOf(x.ess)?' selected':''}>${z}</option>`).join('')}</select></td>
-    <td>${fr(fromIso(x.ref))} ${age>stale?`<span class="pill p-bad">${age} j</span>`:`<span class="muted">(${age} j)</span>`}</td>
-    <td class="num">${x.actifs}</td><td class="num">${m.att}</td><td class="num">${m.real}</td><td class="num ${pctCls(p)}">${pctTxt(p)}</td>
-    <td class="num">${x.late?`<b style="color:var(--bad)">${x.late}</b>`:0}</td><td>${tr}</td>
-    <td class="num">${pctTxt(pct(x.cvAJour||0,x.actifs))}</td><td class="num ${pctCls(pct(x.pvlsN,x.pvlsD))}">${x.pvlsD!=null?pctTxt(pct(x.pvlsN,x.pvlsD)):'–'}</td><td class="num">${x.cra?`<b style="color:var(--bad)">${x.cra}</b>`:(x.pvlsD!=null?0:'–')}</td><td>${spark(x.months||[],mk)}</td></tr>`}).join('')||'<tr><td colspan="13" class="muted">Aucun site pour ce filtre.</td></tr>';
-  // zones table
-  const Z={};all.forEach(x=>{const z=zoneOf(x.ess);const m=mOf(x);Z[z]=Z[z]||{n:0,act:0,att:0,real:0,late:0,pD:0,pN:0,cra:0};Object.assign(Z[z],{n:Z[z].n+1,act:Z[z].act+x.actifs,att:Z[z].att+m.att,real:Z[z].real+m.real,late:Z[z].late+x.late,pD:Z[z].pD+(x.pvlsD||0),pN:Z[z].pN+(x.pvlsN||0),cra:Z[z].cra+(x.cra||0)})});
-  $('tbZ').innerHTML=Object.keys(Z).sort().map(z=>{const v=Z[z],p=pct(v.real,v.att);return `<tr><td><b>${esc(z)}</b></td><td class="num">${v.n}</td><td class="num">${v.act}</td><td class="num">${v.att}</td><td class="num">${v.real}</td><td class="num ${pctCls(p)}">${pctTxt(p)}</td><td class="num">${v.late}</td><td class="num ${pctCls(pct(v.pN,v.pD))}">${pctTxt(pct(v.pN,v.pD))}</td><td class="num">${v.cra}</td></tr>`}).join('')||'<tr><td colspan="9" class="muted">–</td></tr>';
-  // detail
-  const x=all.find(a=>a.ess===SEL);$('detail').hidden=!x;
-  if(x){$('dTitle').textContent=x.ess;$('dSub').textContent=`${zoneOf(x.ess)} · dernier rapport du ${fr(fromIso(x.ref))} · ${x.hist.length} rapport(s) reçu(s)`;
-    $('chM').innerHTML=barChart(x.months||[],mk);$('chH').innerHTML=lineChart(x.hist);
-    $('lTitle').textContent=`Patients en retard (tracking actif) : ${x.late}`;
-    $('tbL').innerHTML=(x.lateList||[]).map(p=>`<tr><td><b>${esc(p.dos)}</b></td><td class="num">${fr(fromIso(p.due))}</td><td class="num">${p.ret??''}</td><td class="num">${fr(fromIso(p.rdv))}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">Aucun patient en retard.</td></tr>';}
-  // history
-  $('tbH').innerHTML=Object.keys(ST.reports).sort().flatMap(e=>ST.reports[e].map((r,i)=>`<tr><td>${esc(e)}</td><td>${fr(fromIso(r.ref))}</td><td>${r.by?esc(r.by.nom)+' <span class="muted">('+esc(r.by.role)+')</span>':'<span class="muted">—</span>'}</td><td>${fr(fromIso(r.recv))}</td><td class="num">${r.actifs}</td><td class="num">${r.late}</td><td>${AY.can('c_importer')?`<button class="btn ghost" type="button" data-del="${esc(e)}" data-i="${i}">Retirer</button>`:''}</td></tr>`)).join('')||'<tr><td colspan="7" class="muted">Aucun rapport.</td></tr>';
-}
-
-// events
-$('btnImp').onclick=()=>$('files').click();
-$('files').onchange=async e=>{if(!AY.can('c_importer'))return;let ok=0,n=0,rp=0,od=0,err=[];for(const f of e.target.files){try{const o=addReport(JSON.parse(await f.text()),f.name);n+=o.n;rp+=o.repl;od+=o.old;ok++}catch(x){err.push(`${f.name} : ${x.message}`)}}
-  save();e.target.value='';msg(err.length?'bad':'info',`${ok} fichier(s) importé(s), ${n} ESS mises à jour`+(rp?` dont ${rp} rapport(s) remplacé(s) (même ESS, même mois)`:'')+'.'+(od?` ${od} rapport(s) ignoré(s) : plus ancien(s) que celui déjà reçu.`:'')+(err.length?'<br>Non importé(s) : '+err.map(esc).join(' ; '):''));render()};
-$('btnPaste').onclick=()=>{try{const o=addReport(JSON.parse($('paste').value),'texte collé');save();$('paste').value='';msg('info',`Rapport ajouté : ${o.n} ESS mises à jour`+(o.repl?`, dont ${o.repl} remplacé(s)`:'')+'.'+(o.old?` ${o.old} ignoré(s) car plus ancien(s).`:''));render()}catch(x){msg('bad','Texte non reconnu : collez exactement le rapport copié depuis Ayaan Suivi CV.')}};
-['selFyC','selZone','selMonth','selStale'].forEach(id=>$(id).addEventListener('change',render));
-$('tbS').addEventListener('change',e=>{const s=e.target.closest('select[data-z]');if(!s||!AY.can('c_importer'))return;ST.zones[s.dataset.z]=s.value;save();render()});
-$('tbS').addEventListener('click',e=>{if(e.target.closest('select'))return;const tr=e.target.closest('tr[data-e]');if(!tr)return;SEL=tr.dataset.e;render();$('detail').scrollIntoView({behavior:'smooth'})});
-$('tbS').addEventListener('keydown',e=>{if(e.key==='Enter'){const tr=e.target.closest('tr[data-e]');if(tr){SEL=tr.dataset.e;render()}}});
-let armDel=null;
-$('tbH').addEventListener('click',e=>{const b=e.target.closest('button[data-del]');if(!b)return;const id=b.dataset.del+'#'+b.dataset.i;if(armDel!==id){armDel=id;b.textContent='Confirmer';return}
-  ST.reports[b.dataset.del].splice(+b.dataset.i,1);if(!ST.reports[b.dataset.del].length)delete ST.reports[b.dataset.del];armDel=null;save();render()});
-function dl(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
-$('btnSave').onclick=()=>{const d=today();dl(`Ayaan centralisateur - sauvegarde - ${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`,JSON.stringify({type:'ayaan-central',...ST}));$('bmsg').textContent='Sauvegarde enregistrée dans Téléchargements.'};
-$('btnRestore').onclick=()=>$('bkf').click();
-$('bkf').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const o=JSON.parse(await f.text());if(o.type!=='ayaan-central')throw 0;ST={reports:o.reports||{},zones:o.zones||{}};save();$('bmsg').textContent='Sauvegarde restaurée.';render()}catch(x){$('bmsg').textContent='Fichier non reconnu.'}e.target.value=''};
-let armC=false;$('btnClear').onclick=()=>{if(!AY.can('effacer'))return;if(!armC){armC=true;$('btnClear').textContent='Confirmer : tout effacer';return}ST={reports:{},zones:{}};save();SEL=null;armC=false;$('btnClear').textContent='Tout effacer';render()};
-$('btnCopyLate').onclick=async()=>{const x=latest(+$('selFyC').value).find(a=>a.ess===SEL);if(!x)return;const t=['N° dossier\tDate probable\tRetard (j)\tProchain RDV ARV'].concat((x.lateList||[]).map(p=>[p.dos,fr(fromIso(p.due)),p.ret,fr(fromIso(p.rdv))].join('\t'))).join('\n');
-  try{await navigator.clipboard.writeText(t);msg('info',`Liste de tracking de ${esc(x.ess)} copiée (${(x.lateList||[]).length} patients).`)}catch(e){$('paste').value=t;msg('info','Copie refusée : la liste est dans la zone « Coller un rapport ».')}};
-try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
-document.addEventListener('ayaan-user',()=>render());
-render();
-})();
-</script>
 </body>
 </html>

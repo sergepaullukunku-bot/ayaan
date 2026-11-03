@@ -1,0 +1,29 @@
+
+#pinLock{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:linear-gradient(135deg,#3d2fa0,#1d1554);color:#fff;padding:16px;overflow:auto}
+#pinLock[hidden]{display:none!important}
+#pinLock .pb{width:min(380px,100%);display:grid;gap:12px;text-align:center}
+#pinLock h2{margin:0;font-size:22px}
+#pinLock p{margin:0;font-size:14px;opacity:.9}
+#pinLock input{font:inherit;font-size:26px;letter-spacing:.4em;text-align:center;padding:10px;border-radius:10px;border:2px solid #f2c400;background:#fff;color:#1f1b33;width:100%}
+#pinLock input#pinName{font-size:18px;letter-spacing:0}
+#pinLock button{font:inherit;font-weight:700;font-size:16px;border-radius:10px;border:0;padding:12px;background:#f2c400;color:#1f1b33;cursor:pointer}
+#pinLock button.lnk{background:transparent;color:#fff;text-decoration:underline;font-weight:500;font-size:14px;padding:4px}
+#pinLock .err{color:#ffb4a8;font-weight:700;min-height:1.2em}
+#pinLock .code{font-family:ui-monospace,Menlo,monospace;font-size:26px;letter-spacing:.15em;background:#fff;color:#342787;border-radius:10px;padding:10px}
+.who{font-size:12px;color:var(--muted);font-weight:600}
+.who b{color:var(--violet)}
+#ayRights[hidden]{display:none!important}.rgt{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--line);font-size:14px}.rgt b{min-width:38px}.rgt .y{color:var(--ok)}.rgt .n{color:var(--bad)}
+.mx{border-collapse:collapse;width:100%;font-size:13px}.mx th{background:var(--violet-soft);color:var(--violet);padding:6px;text-align:left;font-size:12px}.mx td{border-top:1px solid var(--line);padding:5px 6px}.mx td.c{text-align:center;font-weight:700}.mx td.c.y{color:var(--ok);background:var(--ok-soft)}.mx td.c.n{color:var(--bad);background:var(--bad-soft)}.mx tr.g td{background:var(--violet-soft);color:var(--violet);font-weight:700}
+/* Ajouts v15 (remplacent des styles écrits dans le HTML, interdits par la politique de sécurité) */
+#pinLock select{font:inherit;font-size:17px;padding:11px;border-radius:10px;border:2px solid #f2c400;background:#fff;color:#1f1b33;width:100%}
+#pinLock button:disabled{opacity:.6;cursor:wait}
+#ayRights{position:fixed;inset:0;z-index:95;background:rgba(20,18,31,.55);display:grid;place-items:center;padding:16px}
+#ayRights .boite{background:var(--panel);color:var(--ink);border-radius:16px;width:min(560px,100%);max-height:90vh;overflow:auto;padding:18px;border-top:6px solid var(--jaune);display:grid;gap:10px}
+#ayRights h2{margin:0;color:var(--violet);font-size:20px}
+.rgt-g{font-weight:700;color:var(--violet);margin-top:8px}
+.mx th.c{text-align:center}
+.lien-droits{font:inherit;font-size:12px;background:none;border:0;color:var(--bleu);text-decoration:underline;cursor:pointer;padding:0}
+#majBandeau{position:fixed;left:12px;right:12px;bottom:12px;z-index:80;background:#342787;color:#fff;border-radius:12px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;box-shadow:0 6px 24px rgba(0,0,0,.25);border-top:4px solid #f2c400}
+#majBandeau[hidden]{display:none!important}
+#majBandeau button{font:inherit;font-weight:700;border:0;border-radius:8px;padding:8px 14px;background:#f2c400;color:#1f1b33;cursor:pointer}
+#majBandeau .plus-tard{background:transparent;color:#fff;text-decoration:underline;font-weight:500}

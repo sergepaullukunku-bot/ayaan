@@ -1,0 +1,5 @@
+Placez ici le fichier xlsx.mini.min.js de SheetJS (version 0.20.3 ou plus récente),
+téléchargé UNIQUEMENT depuis le site officiel :
+https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.mini.min.js
+Licence : Apache 2.0 (garder l'en-tête du fichier).
+Sans ce fichier, Ayaan utilise son lecteur Excel intégré.
