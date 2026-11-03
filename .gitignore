@@ -1,0 +1,86 @@
+# =====================================================================
+#  Ayaan Suivi CV — .gitignore (PWA HTML / CSS / JavaScript)
+#  Fichiers qui ne doivent JAMAIS être envoyés sur GitHub (dépôt public).
+#  À placer à la RACINE du dépôt (à côté de index.html).
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# 1. Données : exports Tier.Net, classeurs de test, tableaux
+#    (même fictives, elles n'ont rien à faire dans le dépôt)
+# ---------------------------------------------------------------------
+*.xlsx
+*.xlsm
+*.xlsb
+*.xls
+*.ods
+*.csv
+*.tsv
+# fichiers temporaires d'Excel ouverts (~$classeur.xlsx)
+~$*
+
+# ---------------------------------------------------------------------
+# 2. Fichiers produits par Ayaan : sauvegardes, rapports, listes
+#    (l'application ne contient aucun fichier .json : on peut tous les exclure)
+# ---------------------------------------------------------------------
+*.json
+*sauvegarde*
+*rapport*
+*Rapport*
+*export*
+*Export*
+
+# ---------------------------------------------------------------------
+# 3. Notes, configuration personnelle, secrets
+# ---------------------------------------------------------------------
+notes/
+notes*.*
+*.notes.*
+NOTES*.*
+*.local
+*.local.*
+config.local.*
+.env
+.env.*
+*.key
+*.pem
+# ne jamais écrire un code de secours dans un fichier du dépôt
+*code*secours*
+*.docx
+*.pdf
+*.pptx
+
+# ---------------------------------------------------------------------
+# 4. Tests et outils de développement
+# ---------------------------------------------------------------------
+tests/
+test-lib/
+srv/
+node_modules/
+coverage/
+playwright-report/
+test-results/
+*.log
+
+# ---------------------------------------------------------------------
+# 5. Fichiers créés par Windows, Mac et les éditeurs
+# ---------------------------------------------------------------------
+Thumbs.db
+desktop.ini
+.DS_Store
+._*
+.vscode/
+.idea/
+*.swp
+*.bak
+*.tmp
+
+# ---------------------------------------------------------------------
+# 6. EXCEPTIONS : fichiers de l'application à toujours garder
+#    (le « ! » annule une règle ci-dessus)
+#    Remarque : les commentaires doivent être sur leur propre ligne.
+# ---------------------------------------------------------------------
+!manifest.webmanifest
+!central.webmanifest
+!vendor/xlsx.mini.min.js
+!vendor/A-LIRE.txt
+!LISEZ-MOI.md
