@@ -293,7 +293,8 @@ window.ayaanLock=AY.lock;$('ayRC').onclick=()=>{$('ayRights').hidden=true};$('ay
   <div id="dsList" style="display:grid;gap:8px"></div>
   <div class="muted">Touchez une ligne pour ouvrir la liste. Le message à partager ne contient que des chiffres, aucun nom ni N° dossier.</div>
   <div class="acts"><button class="btn" type="button" id="dsWa">Envoyer par WhatsApp</button><button class="btn ghost" type="button" id="dsSms">SMS</button><button class="btn ghost" type="button" id="dsShare" hidden>Partager…</button><button class="btn ghost" type="button" id="dsCopy">Copier</button></div>
-  <div class="acts"><button class="btn ghost" type="button" id="dsNotif" hidden>Activer les notifications</button><button class="btn ghost" type="button" id="dsClose">Fermer</button></div>
+  <div class="acts"><button class="btn ghost" type="button" id="dsNotif" hidden>Activer les notifications</button><button class="btn ghost" type="button" id="dsTest" hidden>Tester la notification</button><button class="btn ghost" type="button" id="dsClose">Fermer</button></div>
+  <div class="muted" id="dsNotifInfo"></div>
 </div></div>
 <div class="wrap">
   <header class="top">
@@ -768,13 +769,18 @@ function daySummary(){
   return{n,lieu,ref};
 }
 function setBadge(v){try{if('setAppBadge' in navigator){v?navigator.setAppBadge(v):navigator.clearAppBadge()}}catch(e){}}
-function notifyDay(d){try{if(!('Notification' in window)||Notification.permission!=='granted'||!navigator.serviceWorker)return;const k='ayaan.notif.last',dd=iso(today());if(localStorage.getItem(k)===dd)return;
-  navigator.serviceWorker.ready.then(r=>r.showNotification('Ayaan · aujourd\'hui',{body:`${d.n.today} à prélever aujourd'hui · ${d.n.cra} CRA à commencer · ${d.n.late} en retard`,icon:'icon-192.png',badge:'icon-192.png',tag:'ayaan-jour'})).then(()=>localStorage.setItem(k,dd)).catch(()=>{})}catch(e){}}
+function notifState(){if(!('Notification' in window))return /iPhone|iPad|iPod/.test(navigator.userAgent)&&!navigator.standalone&&!matchMedia('(display-mode: standalone)').matches?'ios':'absent';return Notification.permission}
+// une notification par utilisateur et par jour (pas une seule par appareil)
+function notifyDay(d,force){try{if(notifState()!=='granted')return;const u=AY.user(),k='ayaan.notif.'+(u?u.id:'x'),dd=iso(today());if(!force&&localStorage.getItem(k)===dd)return;
+  const title='Ayaan · aujourd\'hui',opt={body:`${d.n.today} à prélever aujourd'hui · ${d.n.cra} CRA à commencer · ${d.n.late} en retard`,icon:'icon-192.png',badge:'icon-192.png',tag:'ayaan-jour',renotify:true};
+  const done=()=>{try{localStorage.setItem(k,dd)}catch(e){}};
+  if(navigator.serviceWorker&&navigator.serviceWorker.controller)navigator.serviceWorker.ready.then(r=>r.showNotification(title,opt)).then(done).catch(()=>{try{new Notification(title,opt);done()}catch(e){}});
+  else{new Notification(title,opt);done()}}catch(e){}}
 function showDay(){const d=daySummary();if(!d)return;
   $('dsSub').textContent=`${d.lieu} · ${fr(d.ref)}${DATA.example&&!Object.keys(MAN).length?' · données d\'exemple':''}`;
   const L=[['Aujourd\'hui',d.n.today,'patient(s) à prélever aujourd\'hui (date prévue ou RDV ARV aujourd\'hui)','var(--warn)'],['CRA à commencer',d.n.cra,'patient(s) à commencer le CRA (CV ≥ 1 000)','var(--bad)'],['En retard',d.n.late,'patient(s) en retard de prélèvement : tracking actif','var(--bad)'],['À prélever ce mois',d.n.month,'à prélever ce mois','var(--violet)'],['Résultat en attente',d.n.pend,'résultat(s) en attente','var(--bleu)']];
   $('dsList').innerHTML=L.map(l=>`<button type="button" class="it" data-f="${esc(l[0])}"><b style="color:${l[3]}">${l[1]}</b><span>${esc(l[2])}</span></button>`).join('');
-  $('dsShare').hidden=!navigator.share;$('dsNotif').hidden=!('Notification' in window)||Notification.permission!=='default';
+  $('dsShare').hidden=!navigator.share;{const ns=notifState();$('dsNotif').hidden=ns!=='default';$('dsNotifInfo').textContent=ns==='denied'?'Notifications bloquées : autorisez-les dans les réglages du téléphone (Paramètres › Applications › Ayaan, ou cadenas de la barre d\'adresse › Notifications).':ns==='ios'?'Sur iPhone ou iPad : installez d\'abord Ayaan sur l\'écran d\'accueil (Partager › Sur l\'écran d\'accueil), puis ouvrez-la depuis son icône pour activer les notifications.':ns==='absent'?'Ce navigateur ne permet pas les notifications.':ns==='granted'?'Notifications activées : une par jour et par utilisateur.':'';$('dsTest').hidden=ns!=='granted'}
   $('daySum').hidden=false;setBadge(d.n.late+d.n.cra);notifyDay(d);setTimeout(()=>$('dsClose').focus(),30)}
 $('btnDay').onclick=showDay;
 $('dsClose').onclick=()=>{$('daySum').hidden=true};
@@ -784,7 +790,8 @@ $('dsWa').onclick=()=>window.open('https://wa.me/?text='+encodeURIComponent(DSTX
 $('dsSms').onclick=()=>{location.href='sms:?&body='+encodeURIComponent(DSTXT)};
 $('dsShare').onclick=()=>{navigator.share({text:DSTXT}).catch(()=>{})};
 $('dsCopy').onclick=async()=>{try{await navigator.clipboard.writeText(DSTXT);$('dsCopy').textContent='Copié'}catch(e){$('bk').value=DSTXT;$('dsCopy').textContent='Dans la zone de sauvegarde'}setTimeout(()=>$('dsCopy').textContent='Copier',2000)};
-$('dsNotif').onclick=()=>{Notification.requestPermission().then(p=>{$('dsNotif').hidden=true;if(p==='granted'){try{localStorage.removeItem('ayaan.notif.last')}catch(e){}const d=daySummary();d&&notifyDay(d)}})};
+$('dsNotif').onclick=()=>{Notification.requestPermission().then(()=>showDay())};
+$('dsTest').onclick=()=>{const d=daySummary();d&&notifyDay(d,true)};
 document.addEventListener('ayaan-user',()=>{snapshot();renderUsr();render();if(!DATA.example||Object.keys(MAN).length)showDay()});
 // ----- graphique d'évolution mois par mois (attendus et réalisés), SVG sans bibliothèque
 function renderEvo(rows,ps,per,ref){
