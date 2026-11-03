@@ -1131,8 +1131,8 @@ async function notifyDay(d, force, test) {
     if (!force && store.get(k) === dd) return false;
     const opt = {
       body: `${d.n.today} à prélever aujourd'hui · ${d.n.cra} CRA à commencer · ${d.n.late} en retard`,
-      icon: 'icones/icon-192.png',
-      badge: 'icones/icon-192.png',
+      icon: 'icon-192.png',
+      badge: 'icon-192.png',
       tag: test ? 'ayaan-test-' + Date.now() : 'ayaan-jour',
       renotify: true,
       requireInteraction: !!test,

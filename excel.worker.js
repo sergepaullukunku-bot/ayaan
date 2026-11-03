@@ -5,7 +5,7 @@
    Un gros export Tier.Net se lit donc SANS bloquer l'écran du téléphone.
 
    Optimisations :
-   - la bibliothèque SheetJS (vendor/xlsx.mini.min.js, version « mini »,
+   - la bibliothèque SheetJS (xlsx.mini.min.js, à la racine, version « mini »,
      la plus légère) n'est chargée qu'au premier import, pas au démarrage ;
    - seule la PREMIÈRE feuille est lue (option sheets: 0) ;
    - formules, styles, mise en forme et texte affiché ne sont pas décodés ;
@@ -27,7 +27,7 @@ function versionOk(v, min) {
 self.onmessage = (e) => {
   const { tampon, versionMin } = e.data;
   try {
-    if (!charge) { importScripts('../vendor/xlsx.mini.min.js'); charge = true; }
+    if (!charge) { importScripts('xlsx.mini.min.js'); charge = true; }
   } catch (err) {
     self.postMessage({ ok: false, code: 'absente', erreur: 'bibliothèque SheetJS absente' });
     return;

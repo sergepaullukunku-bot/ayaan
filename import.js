@@ -2,7 +2,7 @@
    Ayaan · import.js — lecture de l'export Tier.Net (Excel ou CSV)
 
    - .xlsx / .xls : lu par SheetJS dans un Web Worker (js/excel.worker.js).
-     Si la bibliothèque SheetJS n'est pas installée (vendor/xlsx.mini.min.js)
+     Si la bibliothèque SheetJS n'est pas installée (xlsx.mini.min.js, à la racine)
      ou est trop ancienne, Ayaan utilise son lecteur .xlsx intégré.
    - .csv : lu directement (séparateur « ; » ou « , » détecté).
    - Contrôles (OWASP M4) : taille maximale, nombre de lignes maximal,
@@ -17,7 +17,7 @@ let travailleur = null; // le Web Worker, créé au premier import Excel puis r�
 
 // Lecture par SheetJS dans le Web Worker
 function lireAvecSheetJS(tampon) {
-  if (!travailleur) travailleur = new Worker('js/excel.worker.js');
+  if (!travailleur) travailleur = new Worker('excel.worker.js');
   return new Promise((ok) => {
     const minuterie = setTimeout(() => {
       travailleur.terminate();

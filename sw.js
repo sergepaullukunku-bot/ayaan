@@ -16,23 +16,24 @@
       connecté, elle l'applique tout de suite.
    4. Activation : l'ancien cache est supprimé.
 
+   Version « à plat » : tous les fichiers sont à la racine du dépôt (pas de dossiers).
    À CHAQUE NOUVELLE VERSION : changer VERSION ci-dessous (et dans js/config.js).
    ===================================================================== */
 
-const VERSION = 'ayaan-v15.1';
+const VERSION = 'ayaan-v15.2';
 
 // Fichiers indispensables : si l'un manque, l'installation échoue (et l'ancienne version reste en place).
 const FICHIERS = [
   './', 'index.html', 'central.html',
   'manifest.webmanifest', 'central.webmanifest',
-  'css/ayaan.css', 'css/central.css', 'css/verrou.css', 'css/adaptatif.css',
-  'js/config.js', 'js/coffre.js', 'js/auth.js', 'js/migration.js', 'js/maj.js', 'js/accueil.js',
-  'js/outils.js', 'js/calculs.js', 'js/fichiers.js', 'js/stockage.js', 'js/import.js', 'js/excel.worker.js', 'js/app.js', 'js/central.js',
-  'icones/icon-192.png', 'icones/icon-512.png', 'icones/maskable-192.png', 'icones/maskable-512.png',
-  'icones/apple-touch-icon.png',
+  'ayaan.css', 'central.css', 'verrou.css', 'adaptatif.css',
+  'config.js', 'coffre.js', 'auth.js', 'migration.js', 'maj.js', 'accueil.js',
+  'outils.js', 'calculs.js', 'fichiers.js', 'stockage.js', 'import.js', 'excel.worker.js', 'app.js', 'central.js',
+  'icon-192.png', 'icon-512.png', 'maskable-192.png', 'maskable-512.png',
+  'apple-touch-icon.png',
 ];
 // Fichiers facultatifs : mis en cache s'ils existent (la bibliothèque SheetJS).
-const FACULTATIFS = ['vendor/xlsx.mini.min.js'];
+const FACULTATIFS = ['xlsx.mini.min.js'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

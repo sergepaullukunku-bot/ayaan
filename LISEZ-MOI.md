@@ -1,4 +1,4 @@
-# Ayaan Suivi CV – version 15.1 (sécurisée, tous appareils)
+# Ayaan Suivi CV – version 15.2 (sécurisée, tous appareils, fichiers à la racine)
 
 Application web installable (PWA) de suivi de la charge virale, patient par patient, **hors ligne**.
 Aucun serveur, aucun framework : du HTML, du CSS et du JavaScript simple, commentés en français.
@@ -44,11 +44,10 @@ Aucun serveur, aucun framework : du HTML, du CSS et du JavaScript simple, commen
 
 1. **Installer SheetJS (une seule fois)** : téléchargez
    `https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.mini.min.js`
-   (version 0.20.3 ou plus récente, site officiel uniquement) et placez-le dans le dossier `vendor/`.
+   (version 0.20.3 ou plus récente, site officiel uniquement) et placez-le **à la racine**, à côté de `index.html`.
    Sans ce fichier, Ayaan fonctionne quand même avec son lecteur intégré (.xlsx et .csv).
    Une version plus ancienne que 0.20.2 est refusée (failles connues).
-2. Dans le dépôt GitHub **ayaan**, envoyez **tout le contenu** de ce dossier en gardant les sous-dossiers
-   (`css/`, `js/`, `icones/`, `vendor/`) : « Add file › Upload files », puis glissez les dossiers.
+2. Dans le dépôt GitHub **ayaan**, envoyez **tous les fichiers** de ce dossier : « Add file › Upload files », puis glissez-les.
 3. « Commit changes ». Attendez 1 à 2 minutes.
 4. Sur chaque téléphone : ouvrez Ayaan depuis son icône. La v15 s'installe toute seule.
 
@@ -69,31 +68,29 @@ Ouvrir `index.html` directement depuis un dossier de l'ordinateur ne fonctionne 
 
 ## Structure du code
 
-```
-ayaan/
-├── index.html            écran principal (HTML seulement, aucun script intégré)
-├── central.html          centralisateur (administrateurs)
-├── sw.js                 service worker : hors ligne et mises à jour
-├── manifest.webmanifest  installation de l'application
-├── css/                  styles (ayaan.css, central.css, verrou.css, adaptatif.css = tactile / souris / clavier)
-├── icones/               icônes de l'application
-├── vendor/               bibliothèque SheetJS (xlsx.mini.min.js), à ajouter
-└── js/
-    ├── config.js         réglages : version, règles du PIN, rôles et droits
-    ├── coffre.js         IndexedDB + chiffrement (le « coffre » des données)
-    ├── auth.js           écran de verrouillage, comptes, droits
-    ├── migration.js      reprise des données de la v14 (une seule fois)
-    ├── maj.js            inscription du service worker, bandeau de mise à jour
-    ├── outils.js         dates, formats, contrôle des sauvegardes
-    ├── calculs.js        règles de calcul (actifs, dates probables, retards)
-    ├── import.js         lecture de l'export Tier.Net (Excel ou CSV)
-    ├── fichiers.js       ouvrir / enregistrer des fichiers, glisser-déposer (API standard)
-    ├── stockage.js       demande de stockage persistant et état affiché
-    ├── excel.worker.js   SheetJS dans un Web Worker (écran jamais bloqué)
-    ├── app.js            écran « Ayaan Suivi CV »
-    ├── central.js        écran « Centralisateur »
-    └── accueil.js        logo animé au lancement
-```
+Tous les fichiers sont **à la racine du dépôt** (pas de sous-dossiers) : on peut tout envoyer d'un coup
+par « Add file › Upload files » sur le site GitHub.
+
+| Fichier | Rôle |
+|---|---|
+| index.html, central.html | les deux écrans (HTML seulement, aucun script intégré) |
+| sw.js | service worker : hors ligne et mises à jour |
+| manifest.webmanifest, central.webmanifest | installation de l'application |
+| ayaan.css, central.css, verrou.css, adaptatif.css | styles (adaptatif.css = tactile / souris / clavier) |
+| icon-192.png, icon-512.png, maskable-*.png, apple-touch-icon.png | icônes |
+| xlsx.mini.min.js | bibliothèque SheetJS (à ajouter, voir plus haut) |
+| config.js | réglages : version, règles du PIN, rôles et droits |
+| coffre.js | IndexedDB + chiffrement (le « coffre » des données) |
+| auth.js | écran de verrouillage, comptes, droits |
+| migration.js | reprise des données de la v14 (une seule fois) |
+| maj.js | inscription du service worker, bandeau de mise à jour |
+| outils.js | dates, formats, contrôle des sauvegardes |
+| calculs.js | règles de calcul (actifs, dates probables, retards) |
+| import.js, excel.worker.js | lecture de l'export Tier.Net (Excel dans un Web Worker, ou CSV) |
+| fichiers.js | ouvrir / enregistrer des fichiers, glisser-déposer (API standard) |
+| stockage.js | demande de stockage persistant et état affiché |
+| app.js, central.js | écran « Ayaan Suivi CV » et écran « Centralisateur » |
+| accueil.js | logo animé au lancement |
 
 **Parcours d'une donnée** : `import.js` lit le fichier → `app.js` l'affiche et appelle `calculs.js` →
 chaque modification passe par `coffre.js`, qui la chiffre puis l'écrit dans IndexedDB.
@@ -104,7 +101,7 @@ chaque modification passe par `coffre.js`, qui la chiffre puis l'écrit dans Ind
 ## Publier une nouvelle version
 
 1. Modifiez le code.
-2. Changez le numéro dans `sw.js` (`VERSION = 'ayaan-v15.2'`, par exemple) **et** dans `js/config.js`.
+2. Changez le numéro dans `sw.js` (`VERSION = 'ayaan-v15.3'`, par exemple) **et** dans `js/config.js`.
 3. Envoyez les fichiers sur GitHub. Les téléphones verront la nouvelle version dès qu'ils auront du réseau.
 
 ## Limites connues

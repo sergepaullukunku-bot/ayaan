@@ -6,7 +6,7 @@
    ===================================================================== */
 
 // Numéro de version affiché à l'écran. Doit correspondre à VERSION dans sw.js.
-export const VERSION = '15.1';
+export const VERSION = '15.2';
 
 // Verrouillage automatique
 export const DELAI_INACTIVITE = 10 * 60 * 1000; // 10 min sans toucher l'écran
