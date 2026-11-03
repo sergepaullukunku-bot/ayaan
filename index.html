@@ -293,7 +293,8 @@ window.ayaanLock=AY.lock;$('ayRC').onclick=()=>{$('ayRights').hidden=true};$('ay
   <div id="dsList" style="display:grid;gap:8px"></div>
   <div class="muted">Touchez une ligne pour ouvrir la liste. Le message à partager ne contient que des chiffres, aucun nom ni N° dossier.</div>
   <div class="acts"><button class="btn" type="button" id="dsWa">Envoyer par WhatsApp</button><button class="btn ghost" type="button" id="dsSms">SMS</button><button class="btn ghost" type="button" id="dsShare" hidden>Partager…</button><button class="btn ghost" type="button" id="dsCopy">Copier</button></div>
-  <div class="acts"><button class="btn ghost" type="button" id="dsNotif" hidden>Activer les notifications</button><button class="btn ghost" type="button" id="dsClose">Fermer</button></div>
+  <div class="acts"><button class="btn ghost" type="button" id="dsNotif" hidden>Activer les notifications</button><button class="btn ghost" type="button" id="dsTest" hidden>Tester la notification</button><button class="btn ghost" type="button" id="dsClose">Fermer</button></div>
+  <div class="muted" id="dsNotifInfo"></div>
 </div></div>
 <div class="wrap">
   <header class="top">
@@ -543,7 +544,7 @@ function compute(ref,fy,per){
   // survenus au plus tard à la date de référence (ref) sont pris en compte.
   const ms=new Date(ref.getFullYear(),ref.getMonth(),1),me=new Date(ref.getFullYear(),ref.getMonth()+1,0);
   const PS=per?per.s.getTime():ms.getTime(),PE=per?per.e.getTime():me.getTime();
-  const lendemain=new Date(ref.getFullYear(),ref.getMonth(),ref.getDate()+1);
+  const jourRef=new Date(ref.getFullYear(),ref.getMonth(),ref.getDate());   // attendu jusqu'à minuit le jour même
   return getRows().map(r=>{
     const deb=fromIso(r.deb),rdv=fromIso(r.rdv),cvd0=fromIso(r.cvd),key=r.ess+'|'+r.dos,s=SAIS[key]||{};
     const sd0=fromIso(s.d);let act;
@@ -568,14 +569,14 @@ function compute(ref,fy,per){
       if(lastD&&lastD>=fy){eff=lastD;effSrc=saisieNew?'saisie':'Tier.Net'}
       if(eff)nextRdv=nextFrom(deb,eff,res);           // prochain RDV CV calculé automatiquement
       if(lastD&&last>=PS&&last<=PE){                  // prélevé pendant la période choisie
-        due=saisieNew&&cvdOK?fyc(nextFrom(deb,cvdOK,r.cvr)):null;
+        due=saisieNew?nextFrom(deb,cvdOK,cvdOK?r.cvr:null):null;   // échéance qui a été honorée (date d'origine, sans la ramener au 1er octobre)
         stat='Prélevé le '+fr(lastD)+(effSrc==='Tier.Net'?' (Tier.Net)':'');
       }else{
         due=prob;
         if(due<ref)stat='En retard';else if(due<=me)stat='À prélever ce mois';else stat='À venir';
         if(stat==='En retard'){
           ret=Math.max(0,Math.round((ref-dueOrig)/DAY));              // jours de retard depuis la date d'origine
-          rep=lendemain;                                               // patient raté : RDV reporté au lendemain, chaque jour
+          rep=jourRef;                                                 // raté la veille : attendu aujourd'hui (jusqu'à minuit), et ainsi de suite chaque jour
           mrep=(ref.getFullYear()-dueOrig.getFullYear())*12+ref.getMonth()-dueOrig.getMonth(); // mois de report depuis le mois d'origine
           nextRdv=rep;
         }else if(stat==='À prélever ce mois')ret=0;
@@ -648,12 +649,12 @@ function render(){
   $('tb').innerHTML=L.slice(page*PAGE,page*PAGE+PAGE).map(x=>`<tr${x.stat==='En retard'?' class="late"':''}>
     <td><b>${esc(x.dos)}</b>${x.src==='Saisie manuelle'||x.src==='Export corrigé'?' <span class="pill p-mut">'+(x.src==='Saisie manuelle'?'manuel':'corrigé')+'</span>':''}</td>
     <td>${esc(x.ess)}</td><td class="num">${fr(x.deb)}</td><td class="num">${fr(x.cvd)}${x.cvr!=null&&x.cvd?'<br><span class="muted">'+x.cvr+' cp/ml</span>':''}</td>
-    <td class="num">${x.act==='Oui'?(x.stat==='En retard'?fr(x.dueOrig)+'<br><span class="muted">date d\'origine</span>':(x.due?fr(x.due):'<span class="muted">—</span>')):'<span class="muted">'+esc(x.act)+'</span>'}</td>
+    <td class="num">${x.act==='Oui'?(x.stat==='En retard'?fr(x.dueOrig)+'<br><span class="muted">date d\'origine</span>':(x.due?fr(x.due)+(x.stat.startsWith('Prélevé')&&x.lastD&&x.due<new Date(x.lastD.getFullYear(),x.lastD.getMonth(),1)?'<br><span class="muted">date d\'origine · rattrapé</span>':''):'<span class="muted">—</span>')):'<span class="muted">'+esc(x.act)+'</span>'}</td>
     <td><span class="pill ${pillCls(x.stat)}">${esc(x.stat)}</span>${x.stat==='En retard'?'<br><span class="track">Tracking actif</span>':''}${x.todayF?'<br><span class="pill p-warn">Aujourd\'hui</span>':''}</td>
     <td>${x.act==='Oui'?`<input type="date" id="d_${esc(x.key)}" data-k="${esc(x.key)}" data-t="d" value="${x.eff?iso(x.eff):''}" max="${iso(today())}" ${x.effSrc==='Tier.Net'?'title="Date reprise de Tier.Net" style="border-color:var(--ok)"':''} aria-label="Date effective ${esc(x.dos)}">${x.effSrc==='Tier.Net'?'<br><span class="muted">auto · Tier.Net</span>':''}`:''}</td>
     <td>${x.act==='Oui'?(()=>{const rc=resCls(x.res);return `<div class="res"><input type="text" data-k="${esc(x.key)}" data-t="r" value="${esc(x.rIn)}" placeholder="${x.resSrc==='Tier.Net'?esc(fmtRes(x.res)):'ex. 40, TND'}" aria-label="Résultat CV ${esc(x.dos)}">${rc?`<span class="pill ${rc.c}">${x.res>=1000?'':fmtRes(x.res)+' · '}${rc.t}</span>`:''}${x.resSrc==='Tier.Net'?'<span class="muted">auto · Tier.Net</span>':''}${x.pend?`<span class="muted">en attente${x.lastD?' depuis '+Math.round((today()-x.lastD)/DAY)+' j':''}</span>`:''}${x.res!=null&&x.res>=1000?`<label class="muted" style="display:grid;gap:2px;margin-top:4px">Début du CRA<input type="date" data-k="${esc(x.key)}" data-t="cra" value="${esc(x.craIn)}" max="${iso(today())}" aria-label="Date de début du CRA ${esc(x.dos)}"></label>${x.craTodo?'<span class="pill p-cra">CRA à commencer</span>':'<span class="pill p-ok">CRA commencé</span>'}`:''}</div>`})():''}</td>
     <td>${x.act==='Oui'?`<input type="date" data-k="${esc(x.key)}" data-t="rd" value="${esc(x.rdIn)}" max="${iso(today())}" aria-label="Date retour du résultat ${esc(x.dos)}">`:''}</td>
-    <td class="num">${x.rep?'<b style="color:var(--bad)">'+fr(x.rep)+'</b><br><span class="muted">reporté au lendemain'+(x.mrep?' · reporté '+x.mrep+' mois':'')+'</span>':(x.nextRdv?'<b>'+fr(x.nextRdv)+'</b><br><span class="muted">à communiquer</span>':'')}</td>
+    <td class="num">${x.rep?'<b style="color:var(--bad)">'+fr(x.rep)+'</b><br><span class="muted">raté la veille : attendu aujourd\'hui'+(x.mrep?' · reporté '+x.mrep+' mois':'')+'</span>':(x.nextRdv?'<b>'+fr(x.nextRdv)+'</b><br><span class="muted">à communiquer</span>':'')}</td>
     <td>${x.act==='Oui'?`<input type="text" id="c_${esc(x.key)}" data-k="${esc(x.key)}" data-t="c" value="${esc(x.com)}" aria-label="Commentaire ${esc(x.dos)}">${x.by?'<br><span class="muted">saisi par '+esc(x.by)+'</span>':''}`:''}</td>
     <td class="num">${x.ret??''}</td></tr>`).join('')||`<tr><td colspan="12" class="muted">Aucun patient pour ce filtre.</td></tr>`;
   {const H=[...document.querySelectorAll('table.cards thead th')].map(t=>t.textContent);document.querySelectorAll('#tb tr').forEach(tr=>[...tr.children].forEach((td,i)=>{if(!td.hasAttribute('colspan'))td.dataset.l=H[i]||''}))}
@@ -768,23 +769,46 @@ function daySummary(){
   return{n,lieu,ref};
 }
 function setBadge(v){try{if('setAppBadge' in navigator){v?navigator.setAppBadge(v):navigator.clearAppBadge()}}catch(e){}}
-function notifyDay(d){try{if(!('Notification' in window)||Notification.permission!=='granted'||!navigator.serviceWorker)return;const k='ayaan.notif.last',dd=iso(today());if(localStorage.getItem(k)===dd)return;
-  navigator.serviceWorker.ready.then(r=>r.showNotification('Ayaan · aujourd\'hui',{body:`${d.n.today} à prélever aujourd'hui · ${d.n.cra} CRA à commencer · ${d.n.late} en retard`,icon:'icon-192.png',badge:'icon-192.png',tag:'ayaan-jour'})).then(()=>localStorage.setItem(k,dd)).catch(()=>{})}catch(e){}}
+function notifState(){if(!('Notification' in window))return /iPhone|iPad|iPod/.test(navigator.userAgent)&&!navigator.standalone&&!matchMedia('(display-mode: standalone)').matches?'ios':'absent';return Notification.permission}
+// une notification par utilisateur et par jour (pas une seule par appareil)
+async function sendNotif(title,opt){
+  if(!('Notification' in window))throw new Error('notifications non prises en charge par ce navigateur');
+  if('serviceWorker' in navigator){let r=await navigator.serviceWorker.getRegistration();
+    if(!r)r=await Promise.race([navigator.serviceWorker.ready,new Promise(s=>setTimeout(()=>s(null),3000))]);
+    if(r&&r.showNotification){await r.showNotification(title,opt);return}}
+  new Notification(title,opt)}
+async function notifyDay(d,force,test){try{if(notifState()!=='granted')return false;const u=AY.user(),k='ayaan.notif.'+(u?u.id:'x'),dd=iso(today());if(!force&&localStorage.getItem(k)===dd)return false;
+  const opt={body:`${d.n.today} à prélever aujourd'hui · ${d.n.cra} CRA à commencer · ${d.n.late} en retard`,icon:'icon-192.png',badge:'icon-192.png',tag:test?'ayaan-test-'+Date.now():'ayaan-jour',renotify:true,requireInteraction:!!test};
+  await sendNotif(test?'Ayaan · test de notification':'Ayaan · aujourd\'hui',opt);try{localStorage.setItem(k,dd)}catch(e){}return true}catch(e){if(test)throw e;return false}}
 function showDay(){const d=daySummary();if(!d)return;
   $('dsSub').textContent=`${d.lieu} · ${fr(d.ref)}${DATA.example&&!Object.keys(MAN).length?' · données d\'exemple':''}`;
   const L=[['Aujourd\'hui',d.n.today,'patient(s) à prélever aujourd\'hui (date prévue ou RDV ARV aujourd\'hui)','var(--warn)'],['CRA à commencer',d.n.cra,'patient(s) à commencer le CRA (CV ≥ 1 000)','var(--bad)'],['En retard',d.n.late,'patient(s) en retard de prélèvement : tracking actif','var(--bad)'],['À prélever ce mois',d.n.month,'à prélever ce mois','var(--violet)'],['Résultat en attente',d.n.pend,'résultat(s) en attente','var(--bleu)']];
   $('dsList').innerHTML=L.map(l=>`<button type="button" class="it" data-f="${esc(l[0])}"><b style="color:${l[3]}">${l[1]}</b><span>${esc(l[2])}</span></button>`).join('');
-  $('dsShare').hidden=!navigator.share;$('dsNotif').hidden=!('Notification' in window)||Notification.permission!=='default';
+  $('dsShare').hidden=!navigator.share;{const ns=notifState();$('dsNotif').hidden=ns!=='default';$('dsNotifInfo').textContent=ns==='denied'?'Notifications bloquées : autorisez-les dans les réglages du téléphone (Paramètres › Applications › Ayaan, ou cadenas de la barre d\'adresse › Notifications).':ns==='ios'?'Sur iPhone ou iPad : installez d\'abord Ayaan sur l\'écran d\'accueil (Partager › Sur l\'écran d\'accueil), puis ouvrez-la depuis son icône pour activer les notifications.':ns==='absent'?'Ce navigateur ne permet pas les notifications.':ns==='granted'?'Notifications activées : une par jour et par utilisateur.':'';$('dsTest').hidden=ns==='absent'||ns==='ios'}
   $('daySum').hidden=false;setBadge(d.n.late+d.n.cra);notifyDay(d);setTimeout(()=>$('dsClose').focus(),30)}
 $('btnDay').onclick=showDay;
 $('dsClose').onclick=()=>{$('daySum').hidden=true};
 $('daySum').addEventListener('click',e=>{if(e.target.id==='daySum'){$('daySum').hidden=true;return}const b=e.target.closest('.it');if(!b)return;statusFilter=b.dataset.f;EDITED.clear();page=0;$('daySum').hidden=true;render();$('listTitle').scrollIntoView({behavior:'smooth'})});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('daySum').hidden)$('daySum').hidden=true});
-$('dsWa').onclick=()=>window.open('https://wa.me/?text='+encodeURIComponent(DSTXT),'_blank');
+$('dsWa').onclick=()=>{const t=encodeURIComponent(DSTXT),info=$('dsNotifInfo');
+  if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){
+    // ouvre directement l'application WhatsApp (évite la page wa.me qui reste bloquée dans l'application installée)
+    let left=false;const h=()=>{if(document.hidden)left=true};document.addEventListener('visibilitychange',h);
+    location.href='whatsapp://send?text='+t;
+    setTimeout(()=>{document.removeEventListener('visibilitychange',h);if(!left&&!document.hidden)info.textContent='WhatsApp ne s\'est pas ouvert sur ce téléphone. Utilisez « Partager… » (puis WhatsApp) ou « Copier » puis collez le message dans WhatsApp.'},2000)}
+  else window.open('https://web.whatsapp.com/send?text='+t,'_blank','noopener')};
 $('dsSms').onclick=()=>{location.href='sms:?&body='+encodeURIComponent(DSTXT)};
 $('dsShare').onclick=()=>{navigator.share({text:DSTXT}).catch(()=>{})};
 $('dsCopy').onclick=async()=>{try{await navigator.clipboard.writeText(DSTXT);$('dsCopy').textContent='Copié'}catch(e){$('bk').value=DSTXT;$('dsCopy').textContent='Dans la zone de sauvegarde'}setTimeout(()=>$('dsCopy').textContent='Copier',2000)};
-$('dsNotif').onclick=()=>{Notification.requestPermission().then(p=>{$('dsNotif').hidden=true;if(p==='granted'){try{localStorage.removeItem('ayaan.notif.last')}catch(e){}const d=daySummary();d&&notifyDay(d)}})};
+$('dsNotif').onclick=()=>{Notification.requestPermission().then(()=>showDay())};
+$('dsTest').onclick=async()=>{const info=$('dsNotifInfo'),bt=$('dsTest');let ns=notifState();
+  if(ns==='default'){try{await Notification.requestPermission()}catch(e){}ns=notifState();$('dsNotif').hidden=ns!=='default'}
+  if(ns==='denied'){info.textContent='Notifications bloquées : Paramètres du téléphone › Applications › Ayaan (ou Chrome) › Notifications › Autoriser, puis réessayez.';return}
+  if(ns!=='granted'){info.textContent='Autorisation non accordée : touchez « Activer les notifications » puis « Autoriser ».';return}
+  const d=daySummary();if(!d)return;bt.disabled=true;info.textContent='Envoi de la notification de test…';
+  try{await notifyDay(d,true,true);info.textContent='Notification de test envoyée : glissez le haut de l\'écran vers le bas pour la voir. Si rien n\'apparaît : vérifiez « Ne pas déranger » et Paramètres › Applications › Ayaan (ou Chrome) › Notifications.'}
+  catch(e){info.textContent='La notification n\'a pas pu être affichée ('+(e&&e.message||e)+'). Fermez Ayaan, rouvrez-la depuis son icône et réessayez.'}
+  finally{bt.disabled=false}};
 document.addEventListener('ayaan-user',()=>{snapshot();renderUsr();render();if(!DATA.example||Object.keys(MAN).length)showDay()});
 // ----- graphique d'évolution mois par mois (attendus et réalisés), SVG sans bibliothèque
 function renderEvo(rows,ps,per,ref){
